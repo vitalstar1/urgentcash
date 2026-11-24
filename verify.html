@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Verify account · UrgentCash Farm</title>
+<style>
+  :root { --bg:#0e1512; --card:#16241d; --line:#2d4d3d; --brand:#2ee59d; --gold:#ffc83d; --txt:#eaf5ef; --mut:#9bb5a8; }
+  * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+  body { background:var(--bg); color:var(--txt); font-family:system-ui,Arial,sans-serif; min-height:100vh; padding:16px 16px calc(100px + env(safe-area-inset-bottom)); display:flex; justify-content:center; }
+  .wrap { width:min(440px,100%); }
+  h1 { font-size:1.15rem; margin:6px 0 14px; } h1 span { color:var(--brand); }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px; margin-bottom:12px; }
+  h2 { font-size:1rem; margin-bottom:8px; }
+  .sub, .note { color:var(--mut); font-size:.82rem; line-height:1.45; }
+  .note { margin-top:8px; font-size:.78rem; }
+  .row { display:flex; justify-content:space-between; gap:12px; padding:9px 0; border-bottom:1px solid var(--line); font-size:.92rem; }
+  .row:last-of-type { border-bottom:0; } .row b { text-align:right; word-break:break-all; }
+  label { display:block; font-size:.8rem; color:var(--mut); margin:10px 0 4px; }
+  input, textarea { width:100%; padding:11px 12px; border-radius:10px; border:1px solid var(--line); background:#0b120f; color:var(--txt); font-size:.95rem; font-family:inherit; }
+  button, a.btn { display:block; width:100%; margin-top:10px; padding:12px; border:0; border-radius:10px; font-weight:700; font-size:.92rem; cursor:pointer; font-family:inherit; text-align:center; text-decoration:none; background:var(--brand); color:#06200f; }
+  button.alt, a.alt { background:#223a2e; color:var(--txt); } button.gold { background:var(--gold); color:#2a1f00; }
+  button:disabled { opacity:.45; cursor:not-allowed; }
+  .msg { min-height:1.2em; margin-top:8px; font-size:.82rem; color:#ff8a80; } .msg.ok { color:var(--brand); }
+  .badge { display:inline-block; padding:4px 10px; border-radius:20px; font-size:.78rem; font-weight:800; }
+  .b-no { background:#3a2a1a; color:var(--gold); } .b-wait { background:#1a2f3a; color:#4fc3f7; } .b-ok { background:#12382a; color:var(--brand); }
+  footer { --fbg:#1f1f1f; --ftx:#c9c9c9; --fln:rgba(255,255,255,.1); --fon:#2ee59d;
+    position:fixed; left:0; right:0; bottom:0; z-index:9; display:flex; padding:0 0 env(safe-area-inset-bottom); background:var(--fbg); border-top:1px solid var(--fln); }
+  footer .fb { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; padding:16px 4px 14px; min-height:76px; margin:0; width:auto; border-radius:0; background:transparent; color:var(--ftx); text-decoration:none; font-size:.75rem; font-weight:500; }
+  footer .fb span { font-size:1.4rem; line-height:1; }
+  footer .fb.on { color:var(--fon); }
+  footer .fb:active { background:var(--fln); }
+  @media (max-width:480px) { footer .fb { font-size:.62rem; padding:14px 2px 12px; min-height:72px; white-space:nowrap; } footer .fb span { font-size:1.2rem; } }
+  .hidden { display:none !important; }
+  #load { text-align:center; color:var(--mut); padding:40px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Urgent<span>Cash</span> Farm · Verify account</h1>
+  <div id="load">Checking your account…</div>
+
+  <div id="main" class="hidden">
+    <div class="card">
+      <div class="row"><span>Account</span><b id="who"></b></div>
+      <div class="row"><span>Status</span><b><span class="badge b-no" id="badge">Not verified</span></b></div>
+      <p class="note" id="perks">Verified accounts can hire a farm worker and join the community chat.</p>
+    </div>
+
+    <div id="stepPay" class="card">
+      <h2>1. Make the deposit</h2>
+      <div class="row"><span>Amount</span><b id="amt"></b></div>
+      <p class="note" id="payDetails"></p>
+      <div class="row"><span>Payment reference</span><b id="uid"></b></div>
+      <button class="alt" onclick="copyUid()">Copy reference</button>
+      <p class="note">Put the reference in the payment narration so we can match it to your account.</p>
+    </div>
+
+    <div id="stepForm" class="card">
+      <h2>2. Tell us you paid</h2>
+      <label for="fName">Name on the payment</label>
+      <input id="fName" maxlength="80" autocomplete="name">
+      <label for="fAmt">Amount you sent (₦)</label>
+      <input id="fAmt" type="number" inputmode="decimal" min="0">
+      <label for="fNote">Note or transaction ID (optional)</label>
+      <input id="fNote" maxlength="120">
+      <p class="msg" id="msg"></p>
+      <button class="gold" id="submit" onclick="submitReq()">Submit for verification</button>
+      <p class="note">We confirm deposits manually. Verification is switched on once your payment is received.</p>
+    </div>
+
+    <div id="stepWait" class="card hidden">
+      <h2>Request received</h2>
+      <p class="sub">We are checking your payment. Come back and press the button once you've waited a while.</p>
+      <button onclick="recheck()">Check status</button>
+    </div>
+
+    <div id="stepDone" class="card hidden">
+      <h2>You're verified 🎉</h2>
+      <p class="sub">You can now hire a farm worker and open the community chat from the farm.</p>
+    </div>
+
+    <a class="btn alt" href="index.html">← Back to farm</a>
+  </div>
+</div>
+
+<footer>
+  <a class="fb" id="homeLink" href="index.html"><span>🏠</span>Home</a>
+  <a class="fb" href="wallet"><span>💼</span>Wallet</a>
+  <a class="fb hidden" id="chatLink" href="#" target="_blank" rel="noopener"><span>💬</span>Chat</a>
+  <a class="fb on" href="verify.html"><span>✅</span>Status</a>
+  <a class="fb" href="stats.html"><span>📊</span>Site Stats</a>
+  <a class="fb" href="profile.html"><span>👤</span>Profile</a>
+</footer>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+/* ============ CONFIG: keep in sync with the farm page ============ */
+const VERIFY_DEPOSIT_NGN = 5800;
+const PAY_DETAILS = "Add your payment details here (bank name, account number, account name).";
+const CHAT_LINK = "https://chat.whatsapp.com/YOUR_LINK_HERE";   // same link as the farm page
+const LOGIN_PAGE = "login.html";
+const FARM_PAGE = "index.html";          // change if your farm page has another file name
+const FIREBASE_CONFIG = {
+  apiKey:"AIzaSyA2LtEPKS6jU3nIsAj-KV3MoxmUULj_5a8",
+  authDomain:"urgent-cash-76162.firebaseapp.com",
+  projectId:"urgent-cash-76162",
+  storageBucket:"urgent-cash-76162.firebasestorage.app",
+  messagingSenderId:"1000483783652",
+  appId:"1:1000483783652:web:f4406e7adb5016b5167df1",
+  measurementId:"G-PN610M8757"
+};
+/* ================================================================== */
+const $ = id => document.getElementById(id);
+firebase.initializeApp(FIREBASE_CONFIG);
+const auth = firebase.auth(), db = firebase.firestore();
+let user = null;
+
+function setMsg(t, ok){ const m = $("msg"); m.textContent = t || ""; m.className = "msg" + (ok ? " ok" : ""); }
+function show(state){            // "none" | "pending" | "verified"
+  const v = state === "verified", w = state === "pending";
+  const cl = $("chatLink"); cl.classList.toggle("hidden", !v || !CHAT_LINK); if (v) cl.href = CHAT_LINK;
+  $("badge").textContent = v ? "Verified" : w ? "Under review" : "Not verified";
+  $("badge").className = "badge " + (v ? "b-ok" : w ? "b-wait" : "b-no");
+  $("stepPay").classList.toggle("hidden", v || w);
+  $("stepForm").classList.toggle("hidden", v || w);
+  $("stepWait").classList.toggle("hidden", !w);
+  $("stepDone").classList.toggle("hidden", !v);
+}
+async function load(){
+  const [u, r] = await Promise.all([
+    db.collection("users").doc(user.uid).get(),
+    db.collection("verifyRequests").doc(user.uid).get()
+  ]);
+  const verified = !!(u.exists && u.data().verified === true);
+  show(verified ? "verified" : (r.exists && r.data().status === "pending") ? "pending" : "none");
+}
+async function recheck(){
+  try { await load(); } catch(e) { setMsg("Could not check. Check your connection."); }
+}
+function copyUid(){
+  navigator.clipboard.writeText(user.uid).then(() => setMsg("Reference copied", true), () => setMsg("Copy failed. Select the reference and copy it."));
+}
+async function submitReq(){
+  const name = $("fName").value.trim(), amount = parseFloat($("fAmt").value), note = $("fNote").value.trim();
+  if (!name) return setMsg("Enter the name on the payment.");
+  if (!(amount > 0)) return setMsg("Enter the amount you sent.");
+  $("submit").disabled = true; setMsg("");
+  try {
+    await db.collection("verifyRequests").doc(user.uid).set({
+      name, amount, note, status:"pending",
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    show("pending");
+  } catch(e) {
+    console.error(e);
+    setMsg("Could not submit. Please try again.");
+  }
+  $("submit").disabled = false;
+}
+
+$("amt").textContent = "₦" + VERIFY_DEPOSIT_NGN.toLocaleString("en-NG");
+$("payDetails").textContent = PAY_DETAILS;
+document.querySelector('a.btn.alt').href = FARM_PAGE; $("homeLink").href = FARM_PAGE;
+
+auth.onAuthStateChanged(async u => {
+  if (!u) { try { if (auth.authStateReady) await auth.authStateReady(); } catch(e) {} if (!auth.currentUser) location.replace(LOGIN_PAGE); return; }
+  user = u;
+  $("who").textContent = u.email || u.displayName || "Player";
+  $("uid").textContent = u.uid;
+  try { await load(); } catch(e) { console.error(e); setMsg("Could not load your status. Refresh to try again."); show("none"); }
+  $("load").classList.add("hidden"); $("main").classList.remove("hidden");
+});
+</script>
+</body>
+</html>
