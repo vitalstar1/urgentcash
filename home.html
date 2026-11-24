@@ -2,8 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<link rel="preconnect" href="https://www.gstatic.com" crossorigin>
-<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+<link rel="preconnect" href="https://www.gstatic.com">
+<link rel="preconnect" href="https://cdnjs.cloudflare.com">
+<link rel="preload" as="script" href="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js">
+<link rel="preload" as="script" href="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js">
+<link rel="preload" as="script" href="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js">
+<link rel="preload" as="script" href="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js" fetchpriority="low">
 <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
 <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
@@ -64,11 +68,11 @@
   .tabs { display:flex; gap:6px; margin-bottom:10px; } .tabs button { flex:1; }
   .msg { color:#ff8a80; font-size:.8rem; min-height:1.1em; margin-bottom:6px; }
   .row b { word-break:break-all; text-align:right; padding-left:12px; }
-  #loader { position:fixed; inset:0; z-index:90; background:transparent; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; text-align:center; padding:24px; transition:opacity .3s; }
+  #loader { position:fixed; inset:0; z-index:90; background:#000; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; text-align:center; padding:24px; transition:opacity .3s; }
   #loader.done { opacity:0; pointer-events:none; }
-  #loader .spin { width:52px; height:52px; border-radius:50%; border:5px solid rgba(14,21,18,.15); border-top-color:#0e1512; animation:ldspin .9s linear infinite; }
-  #loader .ltxt { color:#0e1512; font-weight:700; font-size:1rem; }
-  #loader .lsub { color:#24404f; font-size:.85rem; min-height:1.2em; }
+  #loader .spin { width:52px; height:52px; border-radius:50%; border:5px solid rgba(255,255,255,.14); border-top-color:#2ee59d; animation:ldspin .9s linear infinite; }
+  #loader .ltxt { color:#fff; font-weight:700; font-size:1rem; }
+  #loader .lsub { color:#9bb5a8; font-size:.85rem; min-height:1.2em; }
   body.loading > *:not(#loader):not(script) { visibility:hidden !important; }
   @keyframes ldspin { to { transform:rotate(360deg); } }
   #err { position:fixed; inset:0; background:#0e1512; display:none; align-items:center; justify-content:center; text-align:center; padding:30px; z-index:100; line-height:1.5; }
@@ -144,7 +148,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script>
 /* ============ CONFIG: EDIT THESE ============ */
 const POINTS_PER_USD = 100;    // internal points worth $1. Keep this tied to your real ad income.
@@ -157,6 +160,7 @@ const AD_SECONDS = 5;
 const START_PLOTS = 1;                   // you begin with one plot
 const MAX_PLOTS = 12;                    // 4 columns x 3 rows
 const PLOT_COST = n => 50 * n * n;       // points to unlock plot number n+1 (n = plots owned)
+const DAILY_COOLDOWN = 24*60*60*1000;   // must match firestore.rules
 const DAILY_BONUS = 25;                  // points
 const WATER_PER_CROP = 3;                // one watering lasts (grow time / this) so a crop needs about 3 waterings
 const WATER_MIN_SECS = 20;               // ...but never less than this many seconds
@@ -369,10 +373,39 @@ function buySeeds(key){
   if (S.pts < c.seed) { sfx.error(); return toast("Need " + money(c.seed)); }
   S.pts -= c.seed; S.seeds.push(key); sfx.unlock(); toast(c.name + " seeds unlocked"); save(); render();
 }
-function daily(){
-  const day = new Date().toDateString();
-  if (S.daily === day) { sfx.error(); return toast("Already claimed today"); }
-  S.daily = day; S.pts += DAILY_BONUS; sfx.coin(); toast("+" + money(DAILY_BONUS)); save(); render();
+let lastDailyAt = 0, claiming = false;   // lastDailyAt = server time of the last claim (ms)
+function updateDailyBtn(){
+  const b = $("dailyBtn"); if (!b) return;
+  const left = lastDailyAt + DAILY_COOLDOWN - Date.now();
+  if (claiming)            { b.disabled = true;  b.textContent = "Claiming…"; }
+  else if (!user || !synced) { b.disabled = true;  b.textContent = "Claim daily bonus"; }
+  else if (left > 0)       { b.disabled = true;  b.textContent = "Next bonus in " + Math.floor(left/3600000) + "h " + (Math.floor(left/60000)%60) + "m"; }
+  else                     { b.disabled = false; b.textContent = "Claim daily bonus"; }
+}
+setInterval(updateDailyBtn, 30000);
+// Claim is validated by Firestore security rules using SERVER time (see firestore.rules), so changing the phone clock does nothing.
+async function daily(){
+  if (claiming) return;
+  if (!user || !db || !synced) { sfx.error(); return toast("Go online to claim your bonus"); }
+  claiming = true; updateDailyBtn();
+  const ref = userDoc();
+  try {
+    await pushCloud();                                   // make the cloud farm match this device first
+    await ref.update({
+      "state.pts": firebase.firestore.FieldValue.increment(DAILY_BONUS),
+      dailyAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    S.pts += DAILY_BONUS; sfx.coin(); toast("+" + money(DAILY_BONUS));
+    try { const d = (await ref.get()).data().dailyAt; lastDailyAt = d ? d.toMillis() : Date.now(); } catch(e) { lastDailyAt = Date.now(); }
+    save();
+  } catch(e) {
+    console.error("Daily claim failed", e);
+    if (e && e.code === "permission-denied") {
+      sfx.error(); toast("Daily bonus not ready yet");
+      try { const d = (await ref.get()).data().dailyAt; if (d) lastDailyAt = d.toMillis(); } catch(e2) {}
+    } else { sfx.error(); toast("Could not claim. Check your connection."); }
+  }
+  claiming = false; render(); updateDailyBtn();
 }
 /* The panel appears the moment a plot is tapped; the browser's follow-up "click" from that same tap can land on a panel
    button (e.g. the first crop) and act by itself. Ignore panel clicks for a moment after a plot is selected. */
@@ -440,15 +473,28 @@ function render(){
   $("wBal").textContent = money(S.pts); $("wUsd").textContent = money(S.pts,0);
   $("wNgn").textContent = money(S.pts, CURRENCIES.length>1 ? 1 : 0);
   $("wPlots").textContent = S.plots.length; $("wAds").textContent = S.ads; $("wHarv").textContent = S.harv;
-  $("dailyBtn").disabled = S.daily === new Date().toDateString();
+  updateDailyBtn();
   renderPanel(false);
 }
 
 /* ---------- ACCOUNTS (Firebase Auth + Firestore cloud save) ---------- */
 const FB_READY = typeof firebase !== "undefined" && !/^YOUR_/.test(FIREBASE_CONFIG.apiKey);
 let auth = null, db = null, aMode = "in";
-if (FB_READY) { try { firebase.initializeApp(FIREBASE_CONFIG); auth = firebase.auth(); db = firebase.firestore(); } catch(e) { console.error(e); auth = db = null; } }
+if (FB_READY) { try { firebase.initializeApp(FIREBASE_CONFIG); auth = firebase.auth(); } catch(e) { console.error(e); auth = db = null; } }
 const userDoc = () => db.collection("users").doc(user.uid);
+// Firestore is downloaded in the background so it never delays the first paint.
+let fsPromise = null;
+function loadFirestore(){
+  if (fsPromise) return fsPromise;
+  fsPromise = new Promise((res, rej) => {
+    if (firebase.firestore) return res();
+    const sc = document.createElement("script");
+    sc.src = "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js";
+    sc.onload = res; sc.onerror = () => { fsPromise = null; rej(new Error("Firestore failed to load")); };
+    document.head.appendChild(sc);
+  }).then(() => { if (!db) db = firebase.firestore(); });
+  return fsPromise;
+}
 const amsg = t => { $("aMsg").textContent = t || ""; };
 
 function pushCloud(){
@@ -480,7 +526,7 @@ function hideLoader(){
 }
 window.__ldSlow = setTimeout(() => {
   const t = document.getElementById("lsub"); if (!t) return;
-  t.innerHTML = 'Taking longer than usual… <a href="" onclick="location.reload();return false" style="color:#0b5d3f;font-weight:700">Retry</a>';
+  t.innerHTML = 'Taking longer than usual… <a href="" onclick="location.reload();return false" style="color:#2ee59d;font-weight:700">Retry</a>';
 }, 12000);
 const DEBUG_GATE = false;   // shows WHY it is redirecting instead of redirecting; set false when fixed
 function gateReport(code, reason){
@@ -551,38 +597,53 @@ if (!auth) {
     return;
   }
   user = u; synced = false;
-  // Run the account check and the farm download at the same time.
-  const chkP = verifyAccount(u);
-  let snap = null, loadErr = null;
-  const snapP = userDoc().get().then(x => { snap = x; }).catch(e => { loadErr = e; });
-  const chk = await chkP;
-  if (!chk.ok) {
-    try { await auth.signOut(); } catch(e) {}
-    goLogin(chk.msg, chk.code || "account-check-failed");
-    return;
-  }
-  try { sessionStorage.removeItem("uc_bounce"); } catch(e) {}
-  gated = false;
-  await snapP;
-  if (!loadErr) {
-    if (snap.exists && snap.data().state) {
-      S = migrate(Object.assign(fresh(), snap.data().state));
+  let rejected = false, revealed = false;
+  const fsP = loadFirestore();                    // start downloading Firestore right away
+  const reveal = () => {
+    if (revealed || rejected) return;
+    revealed = true;
+    if (!CURRENCIES[S.cur]) S.cur = 0;
+    closeAuth();
+    try { select(-1); render(); } catch(e) { console.error(e); }
+    hideLoader();
+  };
+  // Account check (disabled / deleted / revoked accounts are signed out and sent to login).
+  const chkP = verifyAccount(u).then(async chk => {
+    if (!chk.ok) {
+      rejected = true;
+      try { await auth.signOut(); } catch(e) {}
+      goLogin(chk.msg, chk.code || "account-check-failed");
     } else {
-      // First sign-in: keep this device's guest farm as the initial account save.
-      S = load(GUEST_KEY) || S || fresh();
+      try { sessionStorage.removeItem("uc_bounce"); } catch(e) {}
+      gated = false;
     }
+    return chk;
+  });
+  // Fast path: this device already has this account's farm saved, so show it immediately.
+  const cached = load(GUEST_KEY + "_" + u.uid);
+  if (cached) { S = cached; reveal(); }
+  // Cloud farm (authoritative) loads in the background.
+  let snap = null, loadErr = null;
+  try { await fsP; snap = await userDoc().get(); } catch(e) { loadErr = e; }
+  await chkP;
+  if (rejected) return;
+  if (!loadErr) {
+    const cloud = snap.exists && snap.data().state ? snap.data() : null;
+    if (cloud) S = migrate(Object.assign(fresh(), cloud.state));
+    else if (!cached) S = load(GUEST_KEY) || S || fresh();   // first sign-in: keep this device's guest farm
+    lastDailyAt = cloud && cloud.dailyAt ? cloud.dailyAt.toMillis() : 0;
     synced = true;
   } else {
-    console.error(loadErr); S = load(GUEST_KEY+"_"+u.uid) || S;  // offline fallback; don't overwrite cloud until loaded
+    console.error(loadErr);
+    if (!cached) S = load(GUEST_KEY + "_" + u.uid) || S;     // offline fallback; don't overwrite cloud until loaded
     synced = false;
     toast("Could not reach your saved farm");
   }
   if (!CURRENCIES[S.cur]) S.cur = 0;
   try { localStorage.setItem(localKey(), JSON.stringify(S)); } catch(e) {}
   if (synced) pushCloud();
-  closeAuth();
-  try { select(-1); render(); } catch(e) { console.error(e); }
-  hideLoader();
+  if (revealed) { try { render(); } catch(e) { console.error(e); } } else reveal();
+  updateDailyBtn();
 });
 
 function openAuth(){
