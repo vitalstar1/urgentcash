@@ -32,6 +32,8 @@
   footer .fb.on { color:var(--fon); }
   footer .fb:active { background:var(--fln); }
   @media (max-width:480px) { footer .fb { font-size:.62rem; padding:14px 2px 12px; min-height:72px; white-space:nowrap; } footer .fb span { font-size:1.2rem; } }
+  .feats { list-style:none; margin:4px 0 10px; display:grid; gap:10px; font-size:.9rem; line-height:1.4; }
+  .feats li { background:#0b120f; border:1px solid var(--line); border-radius:12px; padding:10px 12px; }
   .hidden { display:none !important; }
   #load { text-align:center; color:var(--mut); padding:40px 0; }
 </style>
@@ -45,22 +47,19 @@
     <div class="card">
       <div class="row"><span>Account</span><b id="who"></b></div>
       <div class="row"><span>Status</span><b><span class="badge b-no" id="badge">Not verified</span></b></div>
-      <p class="note" id="perks">Verified accounts can hire a farm worker and join the community chat.</p>
+      <p class="note" id="perks">Verified accounts can withdraw and join the community chat.</p>
     </div>
 
     <div id="stepPay" class="card">
-      <h2>1. Pay the verification fee</h2>
-      <div class="row"><span>Fee (one time)</span><b id="amt"></b></div>
-      <p class="note">Lasts for lifetime. Pay on Paystack, then come back here.</p>
-      <a class="btn gold" id="payLink" target="_blank" rel="noopener noreferrer">Pay on Paystack</a>
-    </div>
-
-    <div id="stepForm" class="card">
-      <h2>2. Tell us you paid</h2>
-      <label for="fRef">Paystack reference or email used to pay</label>
-      <input id="fRef" maxlength="120" placeholder="Reference on your Paystack receipt">
-      <p class="msg" id="msg"></p>
-      <button id="submit" onclick="submitReq()">I have paid</button>
+      <h2>What you unlock</h2>
+      <ul class="feats">
+        <li>💸 <b>Withdrawals</b> — cash out your balance to your bank</li>
+        <li>💬 <b>Community chat</b> — join the verified members' group</li>
+        <li>✅ <b>Verified badge</b> — shown on your account</li>
+        <li>♾️ <b>Lifetime access</b> — pay once, verified forever</li>
+      </ul>
+      <div class="row"><span>One-time fee</span><b id="amt"></b></div>
+      <a class="btn gold" id="payLink" target="_blank" rel="noopener noreferrer">Verify Account</a>
       <p class="note">Your account is verified once your payment is confirmed.</p>
     </div>
 
@@ -72,9 +71,10 @@
 
     <div id="stepDone" class="card hidden">
       <h2>You're verified 🎉</h2>
-      <p class="sub">You can now hire a farm worker and open the community chat from the farm.</p>
+      <p class="sub">You can now withdraw and open the community chat.</p>
     </div>
 
+    <p class="msg" id="msg"></p>
     <a class="btn alt" href="index.html">← Back to farm</a>
   </div>
 </div>
@@ -120,7 +120,6 @@ function show(state){            // "none" | "pending" | "verified"
   $("badge").textContent = v ? "Verified" : w ? "Under review" : "Not verified";
   $("badge").className = "badge " + (v ? "b-ok" : w ? "b-wait" : "b-no");
   $("stepPay").classList.toggle("hidden", v || w);
-  $("stepForm").classList.toggle("hidden", v || w);
   $("stepWait").classList.toggle("hidden", !w);
   $("stepDone").classList.toggle("hidden", !v);
 }
@@ -135,20 +134,6 @@ async function load(){
 async function recheck(){
   try { await load(); } catch(e) { setMsg("Could not check. Check your connection."); }
 }
-async function submitReq(){
-  const ref = $("fRef").value.trim();
-  if (ref.length < 2) return setMsg("Enter the Paystack reference or the email you paid with.");
-  $("submit").disabled = true; setMsg("");
-  try {
-    await db.collection("walletRequests").add({
-      uid:user.uid, email:user.email || "", type:"verify", status:"pending",
-      priceNgn:VERIFY_DEPOSIT_NGN, reference:ref, createdAt:firebase.firestore.FieldValue.serverTimestamp()
-    });
-    show("pending");
-  } catch(e) { console.error(e); setMsg("Could not submit. Please try again."); }
-  $("submit").disabled = false;
-}
-
 $("amt").textContent = "₦" + VERIFY_DEPOSIT_NGN.toLocaleString("en-NG");
 $("payLink").href = VERIFY_LINK;
 document.querySelector('a.btn.alt').href = FARM_PAGE; $("homeLink").href = FARM_PAGE;
