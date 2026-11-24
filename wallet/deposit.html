@@ -1,1 +1,148 @@
- 
+ <!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light dark">
+<title>Deposit · Urgent Cash</title>
+<link rel="icon" type="image/png" href="../logo.png">
+<style>
+:root{
+  --bg:#eaf6ff; --bg2:#dff5c9; --card:#ffffff; --text:#172438; --muted:#68778b; --border:#dce5ef;
+  --primary:#1678e8; --soft:#eaf3ff; --gold:#e0a400; --good:#16a36a; --bad:#d93f3f;
+  --fbg:#ffffff; --ftx:#4a4a4a; --fln:rgba(0,0,0,.12); --fon:#0a9d68;
+}
+@media (prefers-color-scheme:dark){
+  :root{ --bg:#0b1220; --bg2:#0f2a1c; --card:#151e2e; --text:#edf4ff; --muted:#a0aec2; --border:#29374c;
+    --primary:#3189f4; --soft:#192a42; --gold:#ffc83d; --good:#2ee59d; --bad:#ff8a80;
+    --fbg:#1f1f1f; --ftx:#c9c9c9; --fln:rgba(255,255,255,.1); --fon:#2ee59d; }
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;min-height:100vh;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--text);
+  background:linear-gradient(var(--bg),var(--bg2)) fixed;padding:18px 16px calc(96px + env(safe-area-inset-bottom))}
+.wrap{max-width:480px;margin:0 auto;display:grid;gap:14px}
+.top{display:flex;align-items:center;gap:12px}
+.top a.back{width:40px;height:40px;border-radius:12px;background:var(--card);border:1px solid var(--border);display:grid;place-items:center;text-decoration:none;color:var(--text);font-size:1.2rem}
+.top h1{margin:0;font-size:1.3rem;letter-spacing:-.4px}
+.top p{margin:2px 0 0;color:var(--muted);font-size:.85rem}
+.card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:18px;box-shadow:0 8px 28px rgba(0,0,0,.07)}
+.card h2{margin:0 0 12px;font-size:1.02rem}
+.row{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);font-size:.9rem}
+.row:last-child{border-bottom:0}
+.row span{color:var(--muted)} .row b{text-align:right;overflow-wrap:anywhere;font-weight:600}
+label{display:block;font-size:.82rem;color:var(--muted);margin:10px 0 4px;font-weight:600}
+input,select{width:100%;font:inherit;padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--bg);color:var(--text);margin-bottom:4px}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.seg button{font:inherit;border:1px solid var(--border);border-radius:12px;padding:10px;font-weight:700;cursor:pointer;background:var(--soft);color:var(--text)}
+.seg button.on{background:var(--primary);color:#fff;border-color:var(--primary)}
+button.go{font:inherit;border:0;border-radius:12px;padding:13px 14px;font-weight:700;cursor:pointer;background:var(--primary);color:#fff;width:100%;margin-top:12px}
+button.go:disabled{opacity:.5;cursor:not-allowed}
+.hint{color:var(--muted);font-size:.8rem;margin:2px 0 0}
+.msg{min-height:1.2em;font-size:.84rem;margin:8px 0 0}
+.msg.err{color:var(--bad)} .msg.ok{color:var(--good)}
+.warn{background:linear-gradient(135deg,rgba(255,200,61,.22),rgba(46,229,157,.16));border:1px solid var(--gold);border-radius:14px;padding:12px;font-size:.84rem;line-height:1.5}
+.hidden{display:none!important}
+.center{text-align:center;color:var(--muted);padding:40px 0}
+footer{position:fixed;left:0;right:0;bottom:0;z-index:9;display:flex;gap:0;padding:0 0 env(safe-area-inset-bottom);background:var(--fbg);border-top:1px solid var(--fln)}
+footer a{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 4px 8px;color:var(--ftx);text-decoration:none;font-size:.75rem;font-weight:500}
+footer a span{font-size:1.4rem;line-height:1}
+footer a.on{color:var(--fon)} footer a:active{background:var(--fln)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <a class="back" href="index.html" aria-label="Back to wallet">←</a>
+    <div><h1>Deposit</h1><p>Add money to your balance</p></div>
+  </div>
+
+  <div id="loading" class="center">Loading…</div>
+
+  <div id="main" class="hidden" style="display:grid;gap:14px">
+    <section class="card">
+      <h2>1. Send your payment</h2>
+      <div class="row"><span>Bank</span><b id="pBank"></b></div>
+      <div class="row"><span>Account number</span><b id="pNum"></b></div>
+      <div class="row"><span>Account name</span><b id="pName"></b></div>
+      <p class="hint">Use your email as the transfer narration so we can find your payment.</p>
+    </section>
+
+    <section class="card">
+      <h2>2. Tell us what you sent</h2>
+      <label>Currency</label>
+      <div class="seg"><button type="button" id="cNgn" class="on">₦ Naira</button><button type="button" id="cUsd">$ US dollars</button></div>
+      <label for="amt">Amount sent</label>
+      <input id="amt" type="number" inputmode="decimal" min="0" step="any" placeholder="0.00">
+      <p class="hint" id="conv"></p>
+      <label for="ref">Transfer reference or sender name</label>
+      <input id="ref" maxlength="60" placeholder="e.g. the name on the sending account">
+      <button class="go" id="sendBtn">Submit deposit</button>
+      <p class="msg" id="msg"></p>
+    </section>
+
+    <div class="warn">Your balance is credited only after your payment is confirmed. Until then the deposit shows as <b>pending</b> in your history.</div>
+  </div>
+</div>
+
+<footer>
+  <a href="../home.html"><span>🏠</span>Home</a>
+  <a href="index.html" class="on"><span>💼</span>Wallet</a>
+  <a href="../profile.html"><span>👤</span>Profile</a>
+</footer>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
+
+/* ============ CONFIG: EDIT THESE ============ */
+const NGN_RATE   = 1500;     // fixed rate, same as the farm
+const MIN_USD    = 1;        // smallest deposit in dollars
+const LOGIN_PAGE = "../login.html";
+const PAY = { bank:"YOUR BANK NAME", number:"0000000000", name:"YOUR ACCOUNT NAME" };   // where users send money
+const firebaseConfig = {
+  apiKey:"AIzaSyA2LtEPKS6jU3nIsAj-KV3MoxmUULj_5a8", authDomain:"urgent-cash-76162.firebaseapp.com",
+  projectId:"urgent-cash-76162", storageBucket:"urgent-cash-76162.firebasestorage.app",
+  messagingSenderId:"1000483783652", appId:"1:1000483783652:web:f4406e7adb5016b5167df1", measurementId:"G-PN610M8757"
+};
+/* ============================================ */
+
+const app = initializeApp(firebaseConfig), auth = getAuth(app), db = getFirestore(app);
+const $ = id => document.getElementById(id);
+const setMsg = (t, k) => { $("msg").textContent = t || ""; $("msg").className = "msg" + (k ? " " + k : ""); };
+const usd = v => "$" + v.toLocaleString("en-US", { minimumFractionDigits:2, maximumFractionDigits:2 });
+let user = null, cur = "NGN";
+
+$("pBank").textContent = PAY.bank; $("pNum").textContent = PAY.number; $("pName").textContent = PAY.name;
+
+const toUsd = () => { const a = parseFloat($("amt").value); if (!(a > 0)) return 0; return cur === "NGN" ? a / NGN_RATE : a; };
+function updateConv(){ const u = toUsd(); $("conv").textContent = u ? "That is about " + usd(u) + " (minimum " + usd(MIN_USD) + ")" : "Minimum deposit is " + usd(MIN_USD); }
+function setCur(c){ cur = c; $("cNgn").classList.toggle("on", c === "NGN"); $("cUsd").classList.toggle("on", c === "USD"); updateConv(); }
+$("cNgn").onclick = () => setCur("NGN"); $("cUsd").onclick = () => setCur("USD");
+$("amt").oninput = updateConv; updateConv();
+
+$("sendBtn").onclick = async () => {
+  setMsg("");
+  const entered = parseFloat($("amt").value), amountUsd = Math.round(toUsd() * 100) / 100, ref = $("ref").value.trim();
+  if (!(entered > 0)) return setMsg("Enter the amount you sent.", "err");
+  if (amountUsd < MIN_USD) return setMsg("The minimum deposit is " + usd(MIN_USD) + ".", "err");
+  if (ref.length < 2) return setMsg("Enter the transfer reference or sender name.", "err");
+  $("sendBtn").disabled = true;
+  try {
+    await addDoc(collection(db, "walletRequests"), {
+      uid:user.uid, email:user.email || "", type:"deposit", status:"pending",
+      amountUsd, enteredAmount:entered, currency:cur, reference:ref, createdAt:serverTimestamp()
+    });
+    setMsg("Deposit submitted. It will be credited once your payment is confirmed.", "ok");
+    $("amt").value = ""; $("ref").value = ""; updateConv();
+  } catch (e) { console.error(e); setMsg("Could not submit. Check your connection and try again.", "err"); }
+  $("sendBtn").disabled = false;
+};
+
+onAuthStateChanged(auth, u => {
+  if (!u) { location.replace(LOGIN_PAGE); return; }
+  user = u; $("loading").classList.add("hidden"); $("main").classList.remove("hidden");
+});
+</script>
+</body>
+</html>
