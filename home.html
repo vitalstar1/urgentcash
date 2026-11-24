@@ -10,7 +10,6 @@
 <link rel="preload" as="script" href="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js" fetchpriority="low">
 <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
 <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
-<meta name="color-scheme" content="light dark">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>UrgentCash Farm</title>
 <style>
@@ -47,16 +46,8 @@
     #toast { top:96px; }
   }
   button:disabled { opacity:.4; cursor:not-allowed; }
-  #hint { position:fixed; bottom:calc(66px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%); background:rgba(10,20,15,.7); padding:8px 14px; border-radius:20px; font-size:.8rem; color:#fff; z-index:4; white-space:nowrap; pointer-events:none; }
-  #panel { position:fixed; bottom:calc(62px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%); width:min(430px,94%); background:var(--card); border:1px solid var(--line); border-radius:16px; padding:14px; z-index:8; backdrop-filter:blur(6px); max-height:52vh; overflow-y:auto; }
-  footer { --fbg:#ffffff; --ftx:#4a4a4a; --fln:rgba(0,0,0,.12); --fon:#0a9d68;
-    position:fixed; left:0; right:0; bottom:0; z-index:9; display:flex; gap:0; padding:0 0 env(safe-area-inset-bottom);
-    background:var(--fbg); border-top:1px solid var(--fln); }
-  @media (prefers-color-scheme:dark) { footer { --fbg:#1f1f1f; --ftx:#c9c9c9; --fln:rgba(255,255,255,.1); --fon:#2ee59d; } }
-  footer .fb { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; padding:9px 4px 8px; border:0; border-radius:0; background:transparent; color:var(--ftx); text-decoration:none; font-size:.75rem; font-weight:500; cursor:pointer; }
-  footer .fb span { font-size:1.4rem; line-height:1; }
-  footer .fb.on { color:var(--fon); }
-  footer .fb:active { background:var(--fln); }
+  #hint { position:fixed; bottom:16px; left:50%; transform:translateX(-50%); background:rgba(10,20,15,.7); padding:8px 14px; border-radius:20px; font-size:.8rem; color:#fff; z-index:4; white-space:nowrap; pointer-events:none; }
+  #panel { position:fixed; bottom:12px; left:50%; transform:translateX(-50%); width:min(430px,94%); background:var(--card); border:1px solid var(--line); border-radius:16px; padding:14px; z-index:8; backdrop-filter:blur(6px); max-height:62vh; overflow-y:auto; }
   .hidden { display:none !important; }
   #panel h3 { font-size:1rem; margin-bottom:2px; } #panel .x { position:absolute; top:8px; right:8px; padding:6px 10px; }
   .sub { color:var(--mut); font-size:.82rem; margin-bottom:10px; }
@@ -101,16 +92,11 @@
   <div class="right">
     <a class="pill" id="acctBtn" href="profile.html">👤</a>
     <button class="pill" id="muteBtn" onclick="toggleMute()">🔊</button>
+    <button class="pill" onclick="openWallet()">💼</button>
     <button class="pill" id="curBtn" onclick="nextCurrency()">USD ⇄</button>
     <a class="bal" id="coins" href="wallet.html">$0.00</a>
   </div>
 </header>
-
-<footer>
-  <a class="fb on" href="#" onclick="closePanel();return false"><span>🏠</span>Home</a>
-  <a class="fb" href="wallet.html"><span>💼</span>Wallet</a>
-  <a class="fb" href="profile.html"><span>👤</span>Profile</a>
-</footer>
 
 <div id="hint">Tap a plot · drag to look around · pinch to zoom</div>
 <div id="panel" class="hidden"></div>
@@ -182,14 +168,14 @@ const FERT_SPEED = 1.5;                  // fertilized crops grow this much fast
 const FERT_COST = c => Math.max(2, Math.ceil(c.cost * 0.6));   // points per fertilizer (c = crop)
 const HARVEST_BOOST = 1.5;               // optional ad booster multiplies one harvest's payout
 const CROPS = {                          // cost, sell in points; secs = grow time
-  corn:       { name:"Corn",       em:"🌽", seed:0,    cost:5,   sell:15,   secs:30   },   // free starter crop
-  tomato:     { name:"Tomato",     em:"🍅", seed:20,   cost:15,  sell:50,   secs:90   },   // seed = one-time price to unlock the crop
-  pepper:     { name:"Pepper",     em:"🌶️", seed:50,   cost:30,  sell:100,  secs:150  },
-  cassava:    { name:"Cassava",    em:"🥔", seed:80,   cost:40,  sell:150,  secs:240  },
-  pumpkin:    { name:"Pumpkin",    em:"🎃", seed:150,  cost:80,  sell:320,  secs:420  },
-  yam:        { name:"Yam",        em:"🍠", seed:250,  cost:120, sell:480,  secs:600  },
-  watermelon: { name:"Watermelon", em:"🍉", seed:450,  cost:220, sell:950,  secs:900  },
-  pineapple:  { name:"Pineapple",  em:"🍍", seed:900,  cost:500, sell:2400, secs:1800 }
+  corn:       { name:"Corn",       em:"🌽", seed:0,    cost:5,   sell:15,   secs:120   },   // free starter crop
+  tomato:     { name:"Tomato",     em:"🍅", seed:20,   cost:15,  sell:50,   secs:300   },   // seed = one-time price to unlock the crop
+  pepper:     { name:"Pepper",     em:"🌶️", seed:50,   cost:30,  sell:100,  secs:600  },
+  cassava:    { name:"Cassava",    em:"🥔", seed:80,   cost:40,  sell:150,  secs:3600  },
+  pumpkin:    { name:"Pumpkin",    em:"🎃", seed:150,  cost:80,  sell:320,  secs:7200  },
+  yam:        { name:"Yam",        em:"🍠", seed:250,  cost:120, sell:480,  secs:14400  },
+  watermelon: { name:"Watermelon", em:"🍉", seed:450,  cost:220, sell:950,  secs:28800  },
+  pineapple:  { name:"Pineapple",  em:"🍍", seed:900,  cost:500, sell:2400, secs:43200 }
 };
 /* Firebase project settings (Firebase console > Project settings > Your apps > Web app). */
 const FIREBASE_CONFIG = {
@@ -315,11 +301,25 @@ function money(pts, curIndex){
 }
 function nextCurrency(){ S.cur = (S.cur+1) % CURRENCIES.length; save(); render(); toast("Currency: "+CURRENCIES[S.cur].code); }
 
-/* ---------- ADS (placeholder) ---------- */
-function showAd(done){
-  $("overlay").classList.add("on"); let s = AD_SECONDS; $("adCount").textContent = s;
-  const iv = setInterval(()=>{ s--; $("adCount").textContent = s;
-    if (s<=0){ clearInterval(iv); $("overlay").classList.remove("on"); S.ads++; done(); save(); render(); } },1000);
+/* ---------- ADS (opens vsadd.html, which redirects back here when the ad ends) ---------- */
+const AD_PAGE = "vsadd.html";
+const AD_KEY = "urgentcash_pendingad";
+function showAd(action, plot){
+  save();                                                    // keep the farm safe before leaving
+  try { localStorage.setItem(AD_KEY, JSON.stringify({ action, plot, t:Date.now(), ret:location.href })); } catch(e) {}
+  window.location.href = AD_PAGE + "?return=" + encodeURIComponent(location.href);
+}
+/* Called once the farm has loaded: if we just came back from vsadd.html, hand out the reward. */
+function claimAdReward(){
+  let ad = null;
+  try { ad = JSON.parse(localStorage.getItem(AD_KEY) || "null"); localStorage.removeItem(AD_KEY); } catch(e) {}
+  if (!ad || Date.now() - ad.t > 30*60*1000) return;         // nothing pending, or too old
+  const p = S.plots[ad.plot];
+  if (!p) return;
+  if (ad.action === "boostPlot" && !p.boosted) { settle(p); p.grown += (totalMs(p) - p.grown)/2; p.boosted = true; toast("Grow time halved"); }
+  else if (ad.action === "boostHarvest" && !p.hboost) { p.hboost = true; toast("Harvest booster on"); }
+  else return;
+  S.ads++; save(); render();
 }
 
 /* ---------- FARM LOGIC ---------- */
@@ -338,7 +338,9 @@ function plotState(i){
   const kind = g >= tot ? "ready" : wetLeft > 0 ? "growing" : "thirsty";
   return { kind, p, frac:g/tot, left:(tot-g)/speed(p), wetLeft };
 }
-function fmt(ms){ const s=Math.ceil(ms/1000); return s>=60 ? Math.floor(s/60)+"m "+(s%60)+"s" : s+"s"; }
+function fmt(ms){ const s=Math.ceil(ms/1000);
+  if (s>=3600) { const h=Math.floor(s/3600), m=Math.floor(s%3600/60); return h+"h"+(m?" "+m+"m":""); }
+  return s>=60 ? Math.floor(s/60)+"m "+(s%60)+"s" : s+"s"; }
 
 function plant(i, key){
   const c = CROPS[key];
@@ -354,7 +356,7 @@ function harvest(i){
 }
 function boostPlot(i){
   const p = S.plots[i]; if (!p || p.boosted) return;
-  showAd(()=>{ settle(p); p.grown += (totalMs(p) - p.grown)/2; p.boosted = true; sfx.coin(); toast("Grow time halved"); });
+  showAd("boostPlot", i);
 }
 function water(i, quiet){
   const p = S.plots[i]; if (!p || prog(p) >= totalMs(p)) return false;
@@ -375,7 +377,7 @@ function fertilize(i){
 }
 function boostHarvest(i){
   const p = S.plots[i]; if (!p || p.hboost) return;
-  showAd(()=>{ p.hboost = true; sfx.coin(); toast("Harvest booster on"); });
+  showAd("boostHarvest", i);
 }
 function buyPlot(){
   const c = PLOT_COST(S.plots.length);
@@ -657,6 +659,7 @@ if (!auth) {
   try { localStorage.setItem(localKey(), JSON.stringify(S)); } catch(e) {}
   if (synced) pushCloud();
   if (revealed) { try { render(); } catch(e) { console.error(e); } } else reveal();
+  try { claimAdReward(); } catch(e) { console.error(e); }
   updateDailyBtn();
 });
 
