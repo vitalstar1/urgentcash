@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light dark">
+<meta name="robots" content="noindex,nofollow">
+<title>Admin · Urgent Cash</title>
+<link rel="icon" type="image/png" href="../logo.png">
+<style>
+:root{
+  --bg:#eaf6ff; --bg2:#dff5c9; --card:#ffffff; --text:#172438; --muted:#68778b; --border:#dce5ef;
+  --primary:#1678e8; --soft:#eaf3ff; --gold:#e0a400; --good:#16a36a; --bad:#d93f3f;
+}
+@media (prefers-color-scheme:dark){
+  :root{ --bg:#0b1220; --bg2:#0f2a1c; --card:#151e2e; --text:#edf4ff; --muted:#a0aec2; --border:#29374c;
+    --primary:#3189f4; --soft:#192a42; --gold:#ffc83d; --good:#2ee59d; --bad:#ff8a80; }
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;min-height:100vh;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--text);
+  background:linear-gradient(var(--bg),var(--bg2)) fixed;padding:18px 16px 40px}
+.wrap{max-width:720px;margin:0 auto;display:grid;gap:14px}
+.top{display:flex;align-items:center;gap:12px}
+.top img{width:46px;height:46px;object-fit:contain}
+.top h1{margin:0;font-size:1.25rem;letter-spacing:-.4px}
+.top p{margin:2px 0 0;color:var(--muted);font-size:.82rem}
+.top .grow{flex:1}
+.card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:16px;box-shadow:0 8px 28px rgba(0,0,0,.07)}
+.btn{font:inherit;border:0;border-radius:10px;padding:9px 12px;font-weight:700;cursor:pointer;background:var(--primary);color:#fff}
+.btn.sm{padding:6px 10px;font-size:.78rem}
+.btn.good{background:var(--good)} .btn.bad{background:var(--bad)}
+.btn.alt{background:var(--soft);color:var(--text);border:1px solid var(--border)}
+.btn:disabled{opacity:.5;cursor:wait}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.stat{text-align:center}
+.stat b{display:block;font-size:1.8rem;color:var(--gold)}
+.stat span{color:var(--muted);font-size:.8rem}
+.tabs{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.filters{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0}
+.tabs button,.filters button{font:inherit;font-size:.85rem;border:1px solid var(--border);border-radius:12px;padding:9px;font-weight:700;cursor:pointer;background:var(--soft);color:var(--text)}
+.tabs button.on,.filters button.on{background:var(--primary);color:#fff;border-color:var(--primary)}
+.badge{display:inline-block;min-width:20px;padding:1px 6px;border-radius:99px;background:var(--bad);color:#fff;font-size:.72rem;margin-left:4px}
+input.search{width:100%;font:inherit;padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:var(--soft);color:var(--text)}
+.list{display:grid;gap:10px}
+.req{background:var(--soft);border:1px solid var(--border);border-radius:14px;padding:12px;font-size:.88rem}
+.req .row{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.req h3{margin:0;font-size:.95rem;word-break:break-all}
+.req small{color:var(--muted);display:block;margin-top:2px}
+.amt{font-weight:900;font-size:1.05rem;text-align:right;white-space:nowrap}
+.amt small{font-weight:600}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;margin:10px 0;font-size:.85rem}
+.kv dt{color:var(--muted)} .kv dd{margin:0;word-break:break-all}
+.pics{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+.pics a img{width:96px;height:96px;object-fit:cover;border-radius:10px;border:1px solid var(--border)}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.st{font-size:.72rem;font-weight:800;text-transform:uppercase}
+.st.pending{color:var(--gold)} .st.approved{color:var(--good)} .st.rejected{color:var(--bad)}
+.reason{color:var(--bad);font-size:.8rem;margin-top:6px}
+.center{text-align:center;color:var(--muted);padding:40px 0}
+.hidden{display:none!important}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#172438;color:#fff;padding:10px 16px;border-radius:12px;font-size:.88rem;z-index:20;max-width:90%}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <img src="../logo.png" alt="">
+    <div class="grow"><h1>Admin Panel</h1><p id="who">Checking access…</p></div>
+    <button class="btn alt sm hidden" id="logout" type="button">Log out</button>
+  </div>
+
+  <div id="gate" class="center">Loading…</div>
+
+  <div id="main" class="hidden" style="display:grid;gap:14px">
+    <section class="card stats">
+      <div class="stat"><b id="cW">0</b><span>Pending withdrawals</span></div>
+      <div class="stat"><b id="cV">0</b><span>Pending verifications</span></div>
+    </section>
+
+    <section class="card">
+      <div class="tabs">
+        <button data-tab="withdraw" class="on" type="button">💸 Withdrawals<span class="badge hidden" id="bW"></span></button>
+        <button data-tab="verify" type="button">🪪 Verifications<span class="badge hidden" id="bV"></span></button>
+      </div>
+      <div class="filters">
+        <button data-f="pending" class="on" type="button">Pending</button>
+        <button data-f="approved" type="button">Approved</button>
+        <button data-f="rejected" type="button">Rejected</button>
+      </div>
+      <input class="search" id="q" type="search" placeholder="Search name, email, bank, account…">
+    </section>
+
+    <div class="list" id="list"></div>
+    <p class="center hidden" id="empty">Nothing here.</p>
+  </div>
+</div>
+<div class="toast hidden" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
+import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
+import { getFirestore, doc, getDoc, onSnapshot, collection, query, where, runTransaction, serverTimestamp }
+  from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
+
+/* ============ CONFIG ============ */
+const POINTS_PER_USD = 100;     // must match home.html / wallet
+const NGN_RATE       = 1500;
+const LOGIN_PAGE     = "../login.html";
+const WITHDRAW_COLLECTION = "walletRequests";        // docs with type:"withdraw"
+const VERIFY_COLLECTION   = "verificationRequests";  // change if yours is named differently
+/* When are points removed from the user's balance?
+   "approve" = nothing is deducted when the user requests; admin approval deducts the points.
+   "request" = your withdraw page already deducted the points; rejecting refunds them. */
+const BALANCE_MODE = "approve";
+/* Accounts allowed into this panel (Firebase Auth UIDs). Add more separated by commas. */
+const ADMIN_UIDS = ["lWAvUYDfukP8tuUqNkmbiwH35hq2"];
+const firebaseConfig = {
+  apiKey:"AIzaSyA2LtEPKS6jU3nIsAj-KV3MoxmUULj_5a8", authDomain:"urgent-cash-76162.firebaseapp.com",
+  projectId:"urgent-cash-76162", storageBucket:"urgent-cash-76162.firebasestorage.app",
+  messagingSenderId:"1000483783652", appId:"1:1000483783652:web:f4406e7adb5016b5167df1", measurementId:"G-PN610M8757"
+};
+/* ================================== */
+
+const app = initializeApp(firebaseConfig), auth = getAuth(app), db = getFirestore(app);
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+const usd = v => "$" + Number(v || 0).toLocaleString("en-US", { minimumFractionDigits:2, maximumFractionDigits:2 });
+const ngn = v => "₦" + Number(v || 0).toLocaleString("en-NG", { minimumFractionDigits:2, maximumFractionDigits:2 });
+const ms = t => t?.toMillis?.() || (typeof t === "number" ? t : 0);
+const fmtDate = t => ms(t) ? new Date(ms(t)).toLocaleString(undefined, { month:"short", day:"numeric", year:"numeric", hour:"2-digit", minute:"2-digit" }) : "—";
+const isUrl = v => typeof v === "string" && /^https?:\/\//i.test(v);
+
+let me = null, tab = "withdraw", filter = "pending";
+const data = { withdraw: [], verify: [] };
+const names = {}; // uid -> {name,email} cache
+
+function toast(msg){
+  const t = $("toast"); t.textContent = msg; t.classList.remove("hidden");
+  clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.add("hidden"), 3500);
+}
+
+async function userInfo(uid){
+  if (!uid || names[uid]) return;
+  names[uid] = { name: "", email: "" };
+  try {
+    const s = await getDoc(doc(db, "users", uid));
+    if (s.exists()) {
+      const d = s.data();
+      names[uid] = { name: d.name || d.fullName || d.displayName || d.username || "", email: d.email || "", verified: !!d.verified };
+      draw();
+    }
+  } catch (e) { /* ignore */ }
+}
+
+/* ---------- rendering ---------- */
+const SKIP = new Set(["uid","type","status","createdAt","reviewedAt","reviewedBy","rejectReason","name","email","fullName","displayName"]);
+
+function card(r){
+  const u = names[r.uid] || {};
+  const who = r.name || r.fullName || u.name || r.email || u.email || r.uid || "Unknown user";
+  const email = r.email || u.email || "";
+  const status = r.status || "pending";
+  let body = "";
+
+  if (tab === "withdraw") {
+    const amtUsd = Number(r.amountUsd || 0);
+    body = `
+      <div class="row">
+        <div><h3>${esc(who)}</h3><small>${esc(email)}</small><small>${fmtDate(r.createdAt)}</small></div>
+        <div class="amt">${usd(amtUsd)}<small>${ngn(r.amountNgn || amtUsd * NGN_RATE)}</small><span class="st ${esc(status)}">${esc(status)}</span></div>
+      </div>
+      <dl class="kv">
+        <dt>Bank</dt><dd>${esc(r.bank || "—")}</dd>
+        <dt>Account no.</dt><dd>${esc(r.accountNumber || "—")} ${r.accountNumber ? `<button class="btn alt sm" data-copy="${esc(r.accountNumber)}" type="button">Copy</button>` : ""}</dd>
+        <dt>Account name</dt><dd>${esc(r.accountName || "—")}</dd>
+        <dt>Points</dt><dd>${Math.round(amtUsd * POINTS_PER_USD).toLocaleString()}</dd>
+        <dt>User ID</dt><dd>${esc(r.uid || "—")}</dd>
+      </dl>`;
+  } else {
+    const pics = [], rows = [];
+    for (const [k, v] of Object.entries(r)) {
+      if (k === "id" || SKIP.has(k) || v == null || typeof v === "object") continue;
+      if (isUrl(v)) pics.push(`<a href="${esc(v)}" target="_blank" rel="noopener"><img src="${esc(v)}" alt="${esc(k)}" loading="lazy"></a>`);
+      else rows.push(`<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`);
+    }
+    body = `
+      <div class="row">
+        <div><h3>${esc(who)}</h3><small>${esc(email)}</small><small>${fmtDate(r.createdAt)}</small></div>
+        <span class="st ${esc(status)}">${esc(status)}</span>
+      </div>
+      ${rows.length ? `<dl class="kv">${rows.join("")}<dt>User ID</dt><dd>${esc(r.uid || "—")}</dd></dl>` : ""}
+      ${pics.length ? `<div class="pics">${pics.join("")}</div>` : ""}`;
+  }
+
+  const reason = r.rejectReason ? `<div class="reason">Reason: ${esc(r.rejectReason)}</div>` : "";
+  const reviewed = r.reviewedAt ? `<small>Reviewed ${fmtDate(r.reviewedAt)}</small>` : "";
+  const actions = status === "pending"
+    ? `<div class="actions"><button class="btn good sm" data-act="approve" data-id="${esc(r.id)}" type="button">✓ Approve</button>
+       <button class="btn bad sm" data-act="reject" data-id="${esc(r.id)}" type="button">✕ Reject</button></div>`
+    : "";
+  return `<div class="req">${body}${reason}${reviewed}${actions}</div>`;
+}
+
+function draw(){
+  const pW = data.withdraw.filter(r => (r.status || "pending") === "pending").length;
+  const pV = data.verify.filter(r => (r.status || "pending") === "pending").length;
+  $("cW").textContent = pW; $("cV").textContent = pV;
+  $("bW").textContent = pW; $("bW").classList.toggle("hidden", !pW);
+  $("bV").textContent = pV; $("bV").classList.toggle("hidden", !pV);
+
+  const q = $("q").value.trim().toLowerCase();
+  const list = data[tab]
+    .filter(r => (r.status || "pending") === filter)
+    .filter(r => !q || JSON.stringify({ ...r, ...(names[r.uid] || {}) }).toLowerCase().includes(q))
+    // pending: oldest first (fair queue); others: newest first
+    .sort((a, b) => filter === "pending" ? ms(a.createdAt) - ms(b.createdAt) : ms(b.createdAt) - ms(a.createdAt));
+
+  $("list").innerHTML = list.map(card).join("");
+  $("empty").classList.toggle("hidden", list.length > 0);
+}
+
+/* ---------- actions ---------- */
+async function reviewWithdraw(id, approve, reason){
+  await runTransaction(db, async tx => {
+    const reqRef = doc(db, WITHDRAW_COLLECTION, id);
+    const reqSnap = await tx.get(reqRef);
+    if (!reqSnap.exists()) throw new Error("Request no longer exists.");
+    const r = reqSnap.data();
+    if ((r.status || "pending") !== "pending") throw new Error("Already " + r.status + ".");
+    const pts = Math.round(Number(r.amountUsd || 0) * POINTS_PER_USD);
+    const uRef = doc(db, "users", r.uid);
+    const uSnap = await tx.get(uRef);
+    const cur = (uSnap.exists() && uSnap.data().state && uSnap.data().state.pts) || 0;
+
+    if (approve && BALANCE_MODE === "approve") {
+      if (cur < pts) throw new Error(`User only has ${cur.toLocaleString()} points; needs ${pts.toLocaleString()}.`);
+      tx.update(uRef, { "state.pts": cur - pts });
+    }
+    if (!approve && BALANCE_MODE === "request") {
+      tx.update(uRef, { "state.pts": cur + pts }); // refund
+    }
+    tx.update(reqRef, {
+      status: approve ? "approved" : "rejected",
+      reviewedAt: serverTimestamp(), reviewedBy: me.uid,
+      ...(reason ? { rejectReason: reason } : {})
+    });
+  });
+}
+
+async function reviewVerify(id, approve, reason){
+  await runTransaction(db, async tx => {
+    const reqRef = doc(db, VERIFY_COLLECTION, id);
+    const reqSnap = await tx.get(reqRef);
+    if (!reqSnap.exists()) throw new Error("Request no longer exists.");
+    const r = reqSnap.data();
+    if ((r.status || "pending") !== "pending") throw new Error("Already " + r.status + ".");
+    tx.set(doc(db, "users", r.uid), {
+      verified: approve, verificationStatus: approve ? "approved" : "rejected", verifiedAt: serverTimestamp()
+    }, { merge: true });
+    tx.update(reqRef, {
+      status: approve ? "approved" : "rejected",
+      reviewedAt: serverTimestamp(), reviewedBy: me.uid,
+      ...(reason ? { rejectReason: reason } : {})
+    });
+  });
+}
+
+$("list").addEventListener("click", async e => {
+  const copy = e.target.closest("[data-copy]");
+  if (copy) { navigator.clipboard?.writeText(copy.dataset.copy).then(() => toast("Account number copied")); return; }
+
+  const b = e.target.closest("[data-act]"); if (!b) return;
+  const approve = b.dataset.act === "approve", id = b.dataset.id;
+  let reason = "";
+  if (approve) {
+    const msg = tab === "withdraw"
+      ? "Approve this withdrawal? Only approve AFTER you have sent the money." + (BALANCE_MODE === "approve" ? " The points will be deducted from the user." : "")
+      : "Approve this verification?";
+    if (!confirm(msg)) return;
+  } else {
+    reason = prompt("Reason for rejecting (the user may see this):", "");
+    if (reason === null) return;
+  }
+  b.parentElement.querySelectorAll("button").forEach(x => x.disabled = true);
+  try {
+    if (tab === "withdraw") await reviewWithdraw(id, approve, reason.trim());
+    else await reviewVerify(id, approve, reason.trim());
+    toast(approve ? "Approved ✓" : "Rejected");
+  } catch (err) {
+    console.error(err);
+    toast("Failed: " + (err.message || err));
+    b.parentElement.querySelectorAll("button").forEach(x => x.disabled = false);
+  }
+});
+
+document.querySelectorAll("[data-tab]").forEach(b => b.addEventListener("click", () => {
+  tab = b.dataset.tab;
+  document.querySelectorAll("[data-tab]").forEach(x => x.classList.toggle("on", x === b));
+  draw();
+}));
+document.querySelectorAll("[data-f]").forEach(b => b.addEventListener("click", () => {
+  filter = b.dataset.f;
+  document.querySelectorAll("[data-f]").forEach(x => x.classList.toggle("on", x === b));
+  draw();
+}));
+$("q").addEventListener("input", draw);
+$("logout").addEventListener("click", () => signOut(auth).then(() => location.replace(LOGIN_PAGE)));
+
+/* ---------- start ---------- */
+function listen(name, q){
+  onSnapshot(q, snap => {
+    data[name] = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    data[name].forEach(r => userInfo(r.uid));
+    draw();
+  }, err => { console.error(err); toast("Could not load " + name + " requests: " + err.code); });
+}
+
+onAuthStateChanged(auth, async user => {
+  if (!user) { location.replace(LOGIN_PAGE); return; }
+  me = user;
+  $("logout").classList.remove("hidden");
+  if (!ADMIN_UIDS.includes(user.uid)) {
+    $("who").textContent = user.email || user.uid;
+    $("gate").innerHTML = "⛔ This account is not an admin.<br><small>UID: " + esc(user.uid) + "</small>";
+    return;
+  }
+  $("who").textContent = "Signed in as " + (user.email || user.uid);
+  $("gate").classList.add("hidden"); $("main").classList.remove("hidden");
+  listen("withdraw", query(collection(db, WITHDRAW_COLLECTION), where("type", "==", "withdraw")));
+  listen("verify", collection(db, VERIFY_COLLECTION));
+});
+</script>
+</body>
+</html>
