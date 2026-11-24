@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Watch ad · Urgent Cash</title>
+<style>
+  :root {
+    --bg:#0e1712; --panel:#16241d; --line:#24382d; --text:#e8f3ec; --muted:#8fa89a; --accent:#2ee59d;
+    color-scheme: dark;
+  }
+  * { box-sizing:border-box; }
+  html, body { height:100%; margin:0; }
+  body {
+    background:var(--bg); color:var(--text);
+    font:16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    display:flex; align-items:center; justify-content:center;
+    padding:calc(20px + env(safe-area-inset-top,0px)) 20px calc(20px + env(safe-area-inset-bottom,0px));
+  }
+  main { width:100%; max-width:380px; text-align:center; }
+  h1 { font-size:22px; margin:0 0 4px; }
+  .sub { color:var(--muted); margin:0 0 20px; }
+
+  /* Put your real ad (AdMob / AdSense / video tag) inside this box */
+  #adSlot {
+    background:var(--panel); border:1px solid var(--line); border-radius:16px;
+    min-height:220px; display:flex; align-items:center; justify-content:center;
+    padding:16px; color:var(--muted); margin-bottom:22px; overflow:hidden;
+  }
+
+  .ring { position:relative; width:84px; height:84px; margin:0 auto 14px; }
+  .ring svg { width:100%; height:100%; transform:rotate(-90deg); }
+  .ring circle { fill:none; stroke-width:6; }
+  .ring .track { stroke:var(--line); }
+  .ring .bar { stroke:var(--accent); stroke-linecap:round; transition:stroke-dashoffset 1s linear; }
+  .ring b { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:28px; }
+
+  button {
+    width:100%; padding:14px; border:0; border-radius:12px; font:inherit; font-weight:700;
+    background:var(--accent); color:#06231a; cursor:pointer;
+  }
+  button:disabled { background:var(--panel); color:var(--muted); cursor:not-allowed; }
+  button:focus-visible { outline:3px solid #fff; outline-offset:2px; }
+  @media (prefers-reduced-motion: reduce) { .ring .bar { transition:none; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Your boost is almost ready</h1>
+  <p class="sub" id="status">Keep this page open until the ad ends.</p>
+
+  <div id="adSlot">Ad plays here</div>
+
+  <div class="ring" aria-live="polite">
+    <svg viewBox="0 0 84 84" aria-hidden="true">
+      <circle class="track" cx="42" cy="42" r="36"/>
+      <circle class="bar" id="bar" cx="42" cy="42" r="36" stroke-dasharray="226.2" stroke-dashoffset="0"/>
+    </svg>
+    <b id="count">5</b>
+  </div>
+
+  <button id="back" disabled>Back to farm</button>
+</main>
+
+<script>
+const AD_SECONDS   = 5;                    // placeholder length; replace with your ad's real length / callback
+const DEFAULT_GAME = "home.html";          // where to go if no ?return= was given
+
+/* Only allow returning to a page on this same site, so the link can't be used to send players elsewhere. */
+function returnUrl(){
+  const raw = new URLSearchParams(location.search).get("return");
+  if (raw) {
+    try { const u = new URL(raw, location.href); if (u.origin === location.origin) return u.href; } catch(e) {}
+  }
+  return DEFAULT_GAME;
+}
+
+let finished = false;
+function adFinished(){                     // call this from your ad network's "completed" callback
+  if (finished) return;
+  finished = true;
+  document.getElementById("status").textContent = "Done. Taking you back to your farm…";
+  const b = document.getElementById("back");
+  b.disabled = false;
+  setTimeout(() => location.href = returnUrl(), 800);
+}
+document.getElementById("back").onclick = () => { location.href = returnUrl(); };
+
+/* Placeholder countdown. Delete this block once a real ad network calls adFinished(). */
+let left = AD_SECONDS;
+const count = document.getElementById("count"), bar = document.getElementById("bar");
+const C = 2 * Math.PI * 36;
+count.textContent = left;
+const iv = setInterval(() => {
+  left--;
+  count.textContent = Math.max(0, left);
+  bar.style.strokeDashoffset = C * (1 - left / AD_SECONDS);
+  if (left <= 0) { clearInterval(iv); adFinished(); }
+}, 1000);
+</script>
+</body>
+</html>
