@@ -100,16 +100,15 @@
 <header>
   <h1>Urgent<span>Cash</span> Farm</h1>
   <div class="right">
-    <a class="pill" id="acctBtn" href="profile.html">👤</a>
     <button class="pill" id="muteBtn" onclick="toggleMute()">🔊</button>
     <button class="pill" id="curBtn" onclick="nextCurrency()">USD ⇄</button>
-    <a class="bal" id="coins" href="wallet.html">$0.00</a>
+    <a class="bal" id="coins" href="wallet">$0.00</a>
   </div>
 </header>
 
 <footer>
   <a class="fb on" href="#" onclick="closePanel();return false"><span>🏠</span>Home</a>
-  <a class="fb" href="wallet.html"><span>💼</span>Wallet</a>
+  <a class="fb" href="wallet"><span>💼</span>Wallet</a>
   <a class="fb hidden" id="chatLink" href="#" target="_blank" rel="noopener"><span>💬</span>Chat</a>
   <a class="fb" href="verify.html"><span>✅</span>Status</a>
   <a class="fb" href="stats.html"><span>📊</span>Site Stats</a>
@@ -520,7 +519,6 @@ function render(){
   $("coins").textContent = money(S.pts);
   $("curBtn").textContent = CURRENCIES[S.cur].code + " ⇄";
   $("muteBtn").textContent = S.mute ? "🔇" : "🔊";
-  $("acctBtn").textContent = user ? "👤✓" : "👤";
   $("wAcct").textContent = user ? (user.email || user.displayName || "Signed in") : "Guest";
   $("aWho").textContent = user ? (user.email || user.displayName || "Player") : "";
   $("authOut").classList.toggle("hidden", !!user); $("authIn").classList.toggle("hidden", !user);
