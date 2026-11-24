@@ -33,8 +33,16 @@ body{margin:0;min-height:100vh;font-family:system-ui,-apple-system,"Segoe UI",Ro
 .tier{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--soft);border:1px solid var(--border);border-radius:14px;padding:12px}
 .tier.sel{border-color:var(--primary);box-shadow:0 0 0 2px var(--primary) inset}
 .tier b{font-size:1.1rem}
-.tier small.daily{display:inline-block;background:var(--primary);color:#fff;font-weight:800;font-size:.8rem;border-radius:8px;padding:3px 8px;margin:6px 0 2px}
-#tAmt{font-size:1.9rem;font-weight:900;letter-spacing:-.5px;line-height:1.1}
+.bigwd{display:flex;flex-direction:column;align-items:center;gap:4px;width:100%;font:inherit;border:0;border-radius:18px;padding:20px 14px;cursor:pointer;background:var(--primary);color:#fff;text-align:center}
+.bigwd.locked{background:#d93f3f}
+.bigwd:disabled{opacity:.6;cursor:not-allowed}
+.bigwd .l1{font-size:.9rem;font-weight:700;opacity:.92}
+.bigwd .l2{font-size:2.4rem;font-weight:900;letter-spacing:-.5px;line-height:1.1}
+.bigwd .l3{font-size:1.15rem;font-weight:900;letter-spacing:.6px;margin-top:4px}
+.bigwd .l4{font-size:.95rem;font-weight:900;letter-spacing:.8px}
+.dailyrow{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin-top:12px}
+.daily{background:var(--primary);color:#fff;font-weight:800;font-size:.82rem;border-radius:8px;padding:5px 10px}
+.dailyrow small{color:var(--muted);font-size:.85rem;font-weight:600}
 .tier small{display:block;color:var(--muted);font-size:.78rem;margin-top:2px}
 .tier .pend{color:var(--gold);font-weight:700}
 .acts{display:grid;gap:6px;min-width:120px}
@@ -80,10 +88,13 @@ footer a.on{color:var(--fon)} footer a:active{background:var(--fln)}
 
     <section class="card">
       <h2>Withdraw</h2>
-      <div class="tier">
-        <div><b id="tAmt"></b><small class="daily" id="tDaily"></small><small id="tUsd"></small><small id="tStat"></small></div>
-        <div class="acts"><button class="wd locked" id="wdBtn"></button></div>
-      </div>
+      <button class="bigwd locked" id="wdBtn">
+        <span class="l1">Available withdrawal</span>
+        <span class="l2" id="tAmt"></span>
+        <span class="l3" id="wdState"></span>
+        <span class="l4" id="tStat"></span>
+      </button>
+      <div class="dailyrow"><span class="daily" id="tDaily"></span><small id="tUsd"></small></div>
       <div class="lockmsg hidden" id="lockMsg">
         <div class="lockhead">🔒 Unverified account</div>
         <p>Withdrawals are locked until your account is verified.</p>
@@ -175,14 +186,16 @@ function draw(){
   const wait = verified ? waitText() : "";
   const btn = $("wdBtn");
   if (!verified){
-    btn.textContent = "🔒 LOCKED"; btn.className = "wd locked"; btn.disabled = false;
-    $("tStat").textContent = verifyPending ? "⏳ Verification payment pending" : "Verify your account to unlock";
+    btn.className = "bigwd locked"; btn.disabled = false;
+    $("wdState").textContent = "🔐 LOCKED";
+    $("tStat").textContent = verifyPending ? "⏳ VERIFICATION PENDING" : "NEEDS VERIFIED";
     $("lockMsg").classList.toggle("hidden", false);
     $("verifyOpen").classList.toggle("hidden", verifyPending);
   } else {
     $("lockMsg").classList.add("hidden"); $("buyPanel").classList.add("hidden");
-    $("tStat").textContent = wait || "✅ Account verified";
-    btn.textContent = wait ? "Come back later" : "Withdraw"; btn.className = "wd"; btn.disabled = !!wait;
+    btn.className = "bigwd"; btn.disabled = !!wait;
+    $("wdState").textContent = wait ? "⏳ COME BACK LATER" : "✅ TAP TO WITHDRAW";
+    $("tStat").textContent = wait || "ACCOUNT VERIFIED";
     if (wait) $("wdPanel").classList.add("hidden");
   }
 }
