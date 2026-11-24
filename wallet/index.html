@@ -32,9 +32,11 @@ body{margin:0;min-height:100vh;font-family:system-ui,-apple-system,"Segoe UI",Ro
 .balance .big{font-size:2.3rem;font-weight:900;color:var(--gold);letter-spacing:-1px;margin:4px 0}
 .balance .ngn{color:var(--muted);font-size:.95rem;font-weight:600}
 .btns{display:grid;grid-template-columns:1fr;gap:10px;margin-top:16px}
-.btn{font:inherit;border:0;border-radius:12px;padding:13px 14px;font-weight:700;cursor:pointer;background:var(--primary);color:#fff;text-align:center;text-decoration:none;display:block}
+.btn{font:inherit;border:0;border-radius:12px;padding:13px 14px;font-weight:700;cursor:pointer;background:var(--primary);color:#fff;text-align:center;text-decoration:none;display:block;width:100%}
 .btn.alt{background:var(--soft);color:var(--text);border:1px solid var(--border)}
 .btn:active{transform:scale(.98)}
+.btn.insufficient{background:var(--bad);color:#fff;opacity:.75;cursor:not-allowed}
+.btn.ready{background:var(--good);color:#fff;opacity:1}
 .head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
 .head h2{margin:0}
 .tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}
@@ -71,9 +73,10 @@ footer a.on{color:var(--fon)} footer a:active{background:var(--fln)}
       <div class="big" id="bUsd">$0.00</div>
       <div class="ngn" id="bNgn">₦0.00</div>
       <div class="btns">
-        <a class="btn" href="withdraw.html">⬆️ Withdraw</a>
+        <button class="btn insufficient" id="withdrawBtn" type="button" aria-disabled="true">Insufficient Funds</button>
       </div>
     </section>
+
 
     <section class="card">
       <div class="head"><h2>🧾 Withdrawal history</h2></div>
@@ -82,6 +85,7 @@ footer a.on{color:var(--fon)} footer a:active{background:var(--fln)}
     </section>
   </div>
 </div>
+
 
 <footer>
   <a href="../home.html"><span>🏠</span>Home</a>
@@ -97,6 +101,8 @@ import { getFirestore, doc, onSnapshot, collection, query, where, getDocs } from
 /* ============ CONFIG ============ */
 const POINTS_PER_USD = 100;   // must match home.html
 const NGN_RATE       = 1500;  // fixed rate, same as the farm
+const MIN_WITHDRAW_NGN = 30000;
+const WITHDRAW_PAGE = "PN775674594544263ED14tRwp21GLq.html";
 const LOGIN_PAGE     = "../login.html";
 const firebaseConfig = {
   apiKey:"AIzaSyA2LtEPKS6jU3nIsAj-KV3MoxmUULj_5a8", authDomain:"urgent-cash-76162.firebaseapp.com",
@@ -113,6 +119,7 @@ const fmtDate = ms => ms ? new Date(ms).toLocaleString(undefined, { month:"short
 
 const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
 let all = [];
+let currentPoints = 0;
 function drawHistory(){
   const list = all;
   $("histEmpty").classList.toggle("hidden", list.length > 0);
@@ -122,16 +129,34 @@ function drawHistory(){
       <div class="amt out">−${usd(r.amountUsd || 0)}<span class="st ${esc(r.status)}">${esc(r.status)}</span></div></div>`;
   }).join("");
 }
+function updateWithdrawButton(pts){
+  const btn = $("withdrawBtn");
+  const nairaBalance = (pts / POINTS_PER_USD) * NGN_RATE;
+  const eligible = nairaBalance >= MIN_WITHDRAW_NGN;
+  btn.classList.toggle("insufficient", !eligible);
+  btn.classList.toggle("ready", eligible);
+  btn.textContent = eligible ? "Withdraw" : "Insufficient Funds";
+  btn.setAttribute("aria-disabled", String(!eligible));
+}
+$("withdrawBtn").addEventListener("click", () => {
+  const nairaBalance = (currentPoints / POINTS_PER_USD) * NGN_RATE;
+  if (nairaBalance < MIN_WITHDRAW_NGN) {
+    alert("Insufficient funds. Minimum withdrawal amount is ₦30,000.");
+    return;
+  }
+  location.href = WITHDRAW_PAGE;
+});
 
 onAuthStateChanged(auth, async user => {
   if (!user) { location.replace(LOGIN_PAGE); return; }
   try {
     // live balance
     onSnapshot(doc(db, "users", user.uid), snap => {
-      const pts = (snap.exists() && snap.data().state && snap.data().state.pts) || 0;
-      const dollars = pts / POINTS_PER_USD;
+      currentPoints = (snap.exists() && snap.data().state && snap.data().state.pts) || 0;
+      const dollars = currentPoints / POINTS_PER_USD;
       $("bUsd").textContent = usd(dollars);
       $("bNgn").textContent = ngn(dollars * NGN_RATE);
+      updateWithdrawButton(currentPoints);
     });
     // history (sorted here so no special Firestore index is needed)
     const snap = await getDocs(query(collection(db, "walletRequests"), where("uid", "==", user.uid)));
