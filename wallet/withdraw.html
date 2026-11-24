@@ -206,9 +206,15 @@ function draw(){
     btns.forEach(b => {
       const short = balPts < ptsOf(Number(b.dataset.ngn));
       b.className = "bigwd locked"; b.disabled = false;
-      b.querySelector(".l3").textContent = "🔐 LOCKED";
-      b.querySelector(".l4").textContent = verifyPending ? "⏳ VERIFICATION PENDING" : "NEEDS VERIFIED";
-      b.querySelector(".l6").textContent = short ? "💰 INSUFFICIENT FUNDS" : "";
+      if (short) {
+        b.querySelector(".l3").textContent = "💰 INSUFFICIENT FUNDS";
+        b.querySelector(".l4").textContent = "";
+        b.querySelector(".l6").textContent = "";
+      } else {
+        b.querySelector(".l3").textContent = "🔐 LOCKED";
+        b.querySelector(".l4").textContent = verifyPending ? "⏳ VERIFICATION PENDING" : "NEEDS VERIFIED";
+        b.querySelector(".l6").textContent = "";
+      }
     });
     $("lockMsg").classList.toggle("hidden", false);
     $("verifyOpen").classList.toggle("hidden", verifyPending);
@@ -251,9 +257,9 @@ $("verifyOpen").onclick = () => {
 $("amts").onclick = e => {
   const b = e.target.closest(".bigwd");
   if (!b) return;
-  if (!verified) { showPop(); return; }
   selNgn = Number(b.dataset.ngn);
   if (balPts < ptsOf(selNgn)) { showPop("you need " + usd(ptsOf(selNgn) / POINTS_PER_USD) + " to withdraw " + ngn(selNgn)); return; }
+  if (!verified) { showPop(); return; }
   $("wdSummary").textContent = "You will get " + ngn(selNgn) + " (about " + usd(usdOf(selNgn)) + "). We take " + ptsOf(selNgn).toLocaleString() + " points from your balance. You can withdraw once a day.";
   $("wdPanel").classList.remove("hidden"); $("buyPanel").classList.add("hidden");
   setMsg("msg", ""); $("wdPanel").scrollIntoView({ behavior:"smooth", block:"center" });
