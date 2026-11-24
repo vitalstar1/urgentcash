@@ -33,13 +33,23 @@ body{margin:0;min-height:100vh;font-family:system-ui,-apple-system,"Segoe UI",Ro
 .tier{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--soft);border:1px solid var(--border);border-radius:14px;padding:12px}
 .tier.sel{border-color:var(--primary);box-shadow:0 0 0 2px var(--primary) inset}
 .tier b{font-size:1.1rem}
-.bigwd{display:flex;flex-direction:column;align-items:center;gap:4px;width:100%;font:inherit;border:0;border-radius:18px;padding:20px 14px;cursor:pointer;background:var(--primary);color:#fff;text-align:center}
+.amt-title{font-size:.9rem;font-weight:700;color:var(--muted);margin-bottom:8px}
+.amts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.bigwd{display:flex;flex-direction:column;align-items:center;gap:3px;width:100%;font:inherit;border:0;border-radius:16px;padding:16px 8px;cursor:pointer;background:var(--primary);color:#fff;text-align:center}
 .bigwd.locked{background:#d93f3f}
 .bigwd:disabled{opacity:.6;cursor:not-allowed}
-.bigwd .l1{font-size:.9rem;font-weight:700;opacity:.92}
-.bigwd .l2{font-size:2.4rem;font-weight:900;letter-spacing:-.5px;line-height:1.1}
-.bigwd .l3{font-size:1.15rem;font-weight:900;letter-spacing:.6px;margin-top:4px}
-.bigwd .l4{font-size:.95rem;font-weight:900;letter-spacing:.8px}
+.bigwd .l2{font-size:1.6rem;font-weight:900;letter-spacing:-.5px;line-height:1.1}
+.bigwd .l5{font-size:.78rem;font-weight:700;opacity:.9}
+.bigwd .l3{font-size:.95rem;font-weight:900;letter-spacing:.4px;margin-top:4px}
+.bigwd .l4{font-size:.78rem;font-weight:900;letter-spacing:.5px}
+.waitTxt{margin:10px 0 0;font-weight:800;font-size:.88rem;color:var(--gold)}
+.pop{position:fixed;left:50%;bottom:calc(78px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:20;display:flex;align-items:center;gap:10px;max-width:92vw;background:var(--card);color:var(--text);border:1px solid var(--bad);border-radius:14px;padding:10px 12px;font-size:.85rem;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.pop b{color:var(--bad)}
+.pop button{font:inherit;font-weight:800;border:0;cursor:pointer;border-radius:8px}
+#popGo{background:var(--primary);color:#fff;padding:6px 12px}
+#popX{background:transparent;color:var(--muted);padding:4px 6px}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(22,163,106,.7)}50%{box-shadow:0 0 0 10px rgba(22,163,106,0)}}
+.paylink.hl{animation:pulse .8s ease-in-out 2}
 .dailyrow{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin-top:12px}
 .daily{background:var(--primary);color:#fff;font-weight:800;font-size:.82rem;border-radius:8px;padding:5px 10px}
 .dailyrow small{color:var(--muted);font-size:.85rem;font-weight:600}
@@ -88,13 +98,10 @@ footer a.on{color:var(--fon)} footer a:active{background:var(--fln)}
 
     <section class="card">
       <h2>Withdraw</h2>
-      <button class="bigwd locked" id="wdBtn">
-        <span class="l1">Available withdrawal</span>
-        <span class="l2" id="tAmt"></span>
-        <span class="l3" id="wdState"></span>
-        <span class="l4" id="tStat"></span>
-      </button>
-      <div class="dailyrow"><span class="daily" id="tDaily"></span><small id="tUsd"></small></div>
+      <div class="amt-title">Available withdrawal</div>
+      <div class="amts" id="amts"></div>
+      <div class="dailyrow"><span class="daily" id="tDaily"></span></div>
+      <p class="waitTxt hidden" id="waitTxt"></p>
       <div class="lockmsg hidden" id="lockMsg">
         <div class="lockhead">🔒 Unverified account</div>
         <p>Withdrawals are locked until your account is verified.</p>
@@ -102,7 +109,7 @@ footer a.on{color:var(--fon)} footer a:active{background:var(--fln)}
         <p>Lasts for lifetime.</p>
         <p>Click to verify your account and enjoy uninterrupted withdrawals.</p>
         <a class="paylink" id="verifyOpen" target="_blank" rel="noopener noreferrer">Verify my account</a></div>
-      <p class="hint" style="margin-top:12px">The minimum withdrawal is <span class="minTxt"></span>, and <span class="minTxt"></span> is the only amount you can withdraw. You can withdraw once a day. Verification is paid one time only, and your account stays verified forever.</p>
+      <p class="hint" style="margin-top:12px">The minimum withdrawal is <span class="minTxt"></span>. Choose <span id="optTxt"></span>. You can withdraw once a day. Verification is paid one time only, and your account stays verified forever.</p>
     </section>
 
     <section class="card hidden" id="buyPanel">
@@ -131,6 +138,12 @@ footer a.on{color:var(--fon)} footer a:active{background:var(--fln)}
   </div>
 </div>
 
+<div class="pop hidden" id="pop" role="alert">
+  <span>🔐 <b>LOCKED:</b> <span id="popTxt">account needs verification</span></span>
+  <button type="button" id="popGo">Verify</button>
+  <button type="button" id="popX" aria-label="Close">✕</button>
+</div>
+
 <footer>
   <a href="../home.html"><span>🏠</span>Home</a>
   <a href="index.html" class="on"><span>💼</span>Wallet</a>
@@ -145,7 +158,7 @@ import { getFirestore, doc, collection, query, where, addDoc, onSnapshot, runTra
 /* ============ CONFIG: EDIT THESE ============ */
 const POINTS_PER_USD = 100;   // must match home.html
 const NGN_RATE       = 1500;  // fixed rate, same as the farm
-const WITHDRAW_NGN   = 50000; // the only amount that can be withdrawn
+const AMOUNTS        = [50000, 100000, 200000, 300000]; // withdrawal options, in naira (must match firestore.rules)
 const VERIFY_FEE     = 5800;  // one-time account verification, in naira
 // Paystack page where players pay the verification fee:
 const VERIFY_LINK = "https://paystack.shop/pay/wftws-3qga";
@@ -162,19 +175,20 @@ const app = initializeApp(firebaseConfig), auth = getAuth(app), db = getFirestor
 const $ = id => document.getElementById(id);
 const usd = v => "$" + v.toLocaleString("en-US", { minimumFractionDigits:2, maximumFractionDigits:2 });
 const ngn = v => "₦" + v.toLocaleString("en-NG", { maximumFractionDigits:0 });
-const AMT_USD = Math.round(WITHDRAW_NGN / NGN_RATE * 100) / 100;
-const AMT_PTS = Math.round(WITHDRAW_NGN * POINTS_PER_USD / NGN_RATE);
+const usdOf = n => Math.round(n / NGN_RATE * 100) / 100;
+const ptsOf = n => Math.round(n * POINTS_PER_USD / NGN_RATE);
 const setMsg = (id, t, k) => { $(id).textContent = t || ""; $(id).className = "msg" + (k ? " " + k : ""); };
 
-let user = null, balPts = 0, verified = false, lastAt = 0, verifyPending = false;
+let user = null, balPts = 0, verified = false, lastAt = 0, verifyPending = false, selNgn = 0;
 
-document.querySelectorAll(".minTxt").forEach(e => e.textContent = ngn(WITHDRAW_NGN));
-$("tAmt").textContent = ngn(WITHDRAW_NGN);
-$("tDaily").textContent = "📅 Withdraw " + ngn(WITHDRAW_NGN) + " once a day";
-$("tUsd").textContent = "≈ " + usd(AMT_USD);
+document.querySelectorAll(".minTxt").forEach(e => e.textContent = ngn(AMOUNTS[0]));
+$("optTxt").textContent = AMOUNTS.slice(0, -1).map(ngn).join(", ") + " or " + ngn(AMOUNTS[AMOUNTS.length - 1]);
+$("tDaily").textContent = "📅 You can withdraw once a day";
+$("amts").innerHTML = AMOUNTS.map(n =>
+  '<button class="bigwd locked" type="button" data-ngn="' + n + '"><span class="l2">' + ngn(n) + '</span><span class="l5">≈ ' + usd(usdOf(n)) +
+  '</span><span class="l3"></span><span class="l4"></span></button>').join("");
 $("feeTxt").textContent = ngn(VERIFY_FEE);
 $("payInfo").innerHTML = "Pay <b>" + ngn(VERIFY_FEE) + "</b> one time to verify your account.<a class=\"paylink\" href=\"" + VERIFY_LINK + "\" target=\"_blank\" rel=\"noopener noreferrer\">Pay " + ngn(VERIFY_FEE) + " on Paystack</a>After you pay, enter your Paystack reference (or the email you paid with) below and tap “I have paid”.";
-$("wdSummary").textContent = "You will get " + ngn(WITHDRAW_NGN) + " (about " + usd(AMT_USD) + "). We take " + AMT_PTS.toLocaleString() + " points from your balance. You can withdraw once a day.";
 
 function waitText(){
   const left = lastAt + DAY - Date.now();
@@ -184,35 +198,54 @@ function waitText(){
 }
 function draw(){
   const wait = verified ? waitText() : "";
-  const btn = $("wdBtn");
+  const btns = document.querySelectorAll("#amts .bigwd");
+  $("waitTxt").textContent = wait; $("waitTxt").classList.toggle("hidden", !wait);
   if (!verified){
-    btn.className = "bigwd locked"; btn.disabled = false;
-    $("wdState").textContent = "🔐 LOCKED";
-    $("tStat").textContent = verifyPending ? "⏳ VERIFICATION PENDING" : "NEEDS VERIFIED";
+    btns.forEach(b => {
+      b.className = "bigwd locked"; b.disabled = false;
+      b.querySelector(".l3").textContent = "🔐 LOCKED";
+      b.querySelector(".l4").textContent = verifyPending ? "⏳ VERIFICATION PENDING" : "NEEDS VERIFIED";
+    });
     $("lockMsg").classList.toggle("hidden", false);
     $("verifyOpen").classList.toggle("hidden", verifyPending);
   } else {
     $("lockMsg").classList.add("hidden"); $("buyPanel").classList.add("hidden");
-    btn.className = "bigwd"; btn.disabled = !!wait;
-    $("wdState").textContent = wait ? "⏳ COME BACK LATER" : "✅ TAP TO WITHDRAW";
-    $("tStat").textContent = wait || "ACCOUNT VERIFIED";
+    btns.forEach(b => {
+      b.className = "bigwd"; b.disabled = !!wait;
+      b.querySelector(".l3").textContent = wait ? "⏳ COME BACK LATER" : "✅ TAP TO WITHDRAW";
+      b.querySelector(".l4").textContent = wait ? "" : "ACCOUNT VERIFIED";
+    });
     if (wait) $("wdPanel").classList.add("hidden");
   }
 }
 setInterval(draw, 30000);
 
-function openBuy(){
-  if (verifyPending) return;
-  $("buyPanel").classList.remove("hidden"); $("wdPanel").classList.add("hidden");
-  setMsg("buyMsg", ""); $("buyPanel").scrollIntoView({ behavior:"smooth", block:"center" });
+let popTimer = 0;
+function hidePop(){ $("pop").classList.add("hidden"); clearTimeout(popTimer); }
+function showPop(){
+  $("popTxt").textContent = verifyPending ? "verification payment pending" : "account needs verification";
+  $("popGo").classList.toggle("hidden", verifyPending);
+  $("pop").classList.remove("hidden");
+  clearTimeout(popTimer); popTimer = setTimeout(hidePop, 7000);
 }
+$("popX").onclick = hidePop;
+$("popGo").onclick = () => {
+  hidePop();
+  const b = $("verifyOpen");
+  b.scrollIntoView({ behavior:"smooth", block:"center" });
+  b.classList.remove("hl"); void b.offsetWidth; b.classList.add("hl");
+};
 $("verifyOpen").href = VERIFY_LINK;
 $("verifyOpen").onclick = () => {
   if (verifyPending) return;
   $("buyPanel").classList.remove("hidden"); $("wdPanel").classList.add("hidden"); setMsg("buyMsg", "");
 };
-$("wdBtn").onclick = () => {
-  if (!verified) { $("lockMsg").scrollIntoView({ behavior:"smooth", block:"center" }); return; }
+$("amts").onclick = e => {
+  const b = e.target.closest(".bigwd");
+  if (!b) return;
+  if (!verified) { showPop(); return; }
+  selNgn = Number(b.dataset.ngn);
+  $("wdSummary").textContent = "You will get " + ngn(selNgn) + " (about " + usd(usdOf(selNgn)) + "). We take " + ptsOf(selNgn).toLocaleString() + " points from your balance. You can withdraw once a day.";
   $("wdPanel").classList.remove("hidden"); $("buyPanel").classList.add("hidden");
   setMsg("msg", ""); $("wdPanel").scrollIntoView({ behavior:"smooth", block:"center" });
 };
@@ -236,6 +269,8 @@ $("buyBtn").onclick = async () => {
 $("sendBtn").onclick = async () => {
   setMsg("msg", "");
   if (!verified) return setMsg("msg", "Please verify your account first.", "err");
+  if (!AMOUNTS.includes(selNgn)) return setMsg("msg", "Choose an amount to withdraw.", "err");
+  const amt = selNgn, pts = ptsOf(amt), amtUsd = usdOf(amt);
   const bank = $("bank").value.trim(), num = $("num").value.trim(), aname = $("aname").value.trim();
   if (bank.length < 2 || aname.length < 2) return setMsg("msg", "Enter the bank name and account name.", "err");
   if (!/^\d{6,20}$/.test(num)) return setMsg("msg", "Enter a valid account number (digits only).", "err");
@@ -247,12 +282,12 @@ $("sendBtn").onclick = async () => {
       const have = (us.exists() && us.data().state && us.data().state.pts) || 0;
       const last = ls.exists() && ls.data().lastAt && ls.data().lastAt.toMillis ? ls.data().lastAt.toMillis() : 0;
       if (Date.now() < last + DAY) throw new Error("wait: You can only withdraw once a day. Please try again later.");
-      if (have < AMT_PTS) throw new Error("balance: Your balance is too low for " + ngn(WITHDRAW_NGN) + ".");
-      tx.update(uref, { "state.pts":increment(-AMT_PTS) });
+      if (have < pts) throw new Error("balance: Your balance is too low for " + ngn(amt) + ".");
+      tx.update(uref, { "state.pts":increment(-pts) });
       tx.set(lref, { lastAt:serverTimestamp() });
       tx.set(rref, {
         uid:user.uid, email:user.email || "", type:"withdraw", status:"pending",
-        amountNgn:WITHDRAW_NGN, amountUsd:AMT_USD, points:AMT_PTS, bank, accountNumber:num, accountName:aname, createdAt:serverTimestamp()
+        amountNgn:amt, amountUsd:amtUsd, points:pts, bank, accountNumber:num, accountName:aname, createdAt:serverTimestamp()
       });
     });
     setMsg("msg", "Withdrawal requested. It shows as pending until it is paid.", "ok");
