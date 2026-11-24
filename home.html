@@ -164,7 +164,7 @@ const CROPS = {                          // cost, sell in points; secs = grow ti
 };
 /* Firebase project settings (Firebase console > Project settings > Your apps > Web app). */
 const FIREBASE_CONFIG = {
-  apiKey:"AIzaSyA2LtEPKS6jU3nIsAj-KKV3MoxmUULj_5a8",
+  apiKey:"AIzaSyA2LtEPKS6jU3nIsAj-KV3MoxmUULj_5a8",
   authDomain:"urgent-cash-76162.firebaseapp.com",
   projectId:"urgent-cash-76162",
   storageBucket:"urgent-cash-76162.firebasestorage.app",
@@ -462,7 +462,7 @@ document.addEventListener("visibilitychange", () => { if (document.hidden) pushC
 const LOGIN_PAGE = "login.html";   // must be on the SAME domain as this page
 let gated = false;
 
-const DEBUG_GATE = true;   // shows WHY it is redirecting instead of redirecting; set false when fixed
+const DEBUG_GATE = false;   // shows WHY it is redirecting instead of redirecting; set false when fixed
 function gateReport(code, reason){
   let keys = [];
   try { keys = Object.keys(localStorage).filter(k => k.indexOf("firebase:authUser:") === 0); } catch(e) { keys = ["(localStorage blocked)"]; }
