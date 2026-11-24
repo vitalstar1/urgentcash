@@ -279,8 +279,14 @@ async function copy(text, ok){ try { await navigator.clipboard.writeText(text); 
 onAuthStateChanged(auth, async u => {
   if (!u) { location.replace(LOGIN_PAGE); return; }
   user = u;
+  try { await refreshUser(); }
+  catch (e) {
+    console.error(e);
+    $("loading").textContent = "Could not load your profile: " + (e.code || e.message);
+    return;
+  }
+  let list = [], inviteErr = null;
   try {
-    await refreshUser();
     // keep a readable copy of the user's details in their cloud document
     await setDoc(userRef(), { uid:u.uid, email:u.email || "", displayName:u.displayName || data.displayName || "", lastSeenAt:serverTimestamp() }, { merge:true });
     await ensureInviteCode();
@@ -291,14 +297,11 @@ onAuthStateChanged(auth, async u => {
     }
     try { localStorage.removeItem("uc_ref"); } catch (e) {}
     await refreshUser();
-    const list = await loadReferrals();
-    renderAll(list);
-  } catch (e) {
-    console.error(e);
-    $("loading").textContent = "Could not load your profile. Check your connection and refresh.";
-    return;
-  }
+    list = await loadReferrals();
+  } catch (e) { console.error(e); inviteErr = e; }
+  renderAll(list);
   $("loading").classList.add("hidden"); $("main").classList.remove("hidden");
+  if (inviteErr) toast("Invites unavailable: " + (inviteErr.code || inviteErr.message));
 });
 
 $("copyCode").onclick = () => copy(data.inviteCode, "Code copied");
