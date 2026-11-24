@@ -1,852 +1,365 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>UrgentCash Farm</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Urgent Cash</title>
+
 <style>
-  :root { --bg:#0e1512; --card:rgba(18,32,25,.92); --line:#2d4d3d; --brand:#2ee59d; --gold:#ffc83d; --txt:#eaf5ef; --mut:#9bb5a8; }
-  * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
-  html,body { height:100%; overflow:hidden; background:#8fd3ff; color:var(--txt); font-family:system-ui,Arial,sans-serif; user-select:none; -webkit-user-select:none; }
-  #c { position:fixed; inset:0; width:100%; height:100%; display:block; touch-action:none; }
-  header { position:fixed; top:0; left:0; right:0; padding:10px 12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px 8px; z-index:5; background:linear-gradient(rgba(10,20,15,.75),rgba(10,20,15,0)); pointer-events:none; }
-  header > * { pointer-events:auto; }
-  header h1 { font-size:1.05rem; text-shadow:0 1px 4px #000; } header h1 span { color:var(--brand); }
-  .right { display:flex; gap:6px; align-items:center; flex-wrap:wrap; justify-content:flex-end; margin-left:auto; max-width:100%; }
-  .bal { flex-shrink:0; white-space:nowrap; position:relative; display:inline-flex; align-items:center; gap:6px; padding:8px 14px 8px 10px; border-radius:22px; font-weight:800; font-size:.95rem; letter-spacing:.2px; color:var(--gold); text-decoration:none; cursor:pointer; overflow:hidden;
-    background:linear-gradient(135deg, rgba(34,58,46,.96), rgba(14,28,21,.96)); border:1px solid rgba(255,200,61,.45);
-    box-shadow:0 2px 8px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.08); text-shadow:0 1px 3px rgba(0,0,0,.5);
-    transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease, color .18s ease; }
-  .bal::before { content:"🪙"; font-size:1.05rem; transition:transform .25s ease; }
-  .bal::after { content:""; position:absolute; top:0; left:-60%; width:40%; height:100%; background:linear-gradient(105deg, transparent, rgba(255,255,255,.28), transparent); transform:skewX(-20deg); transition:left .55s ease; pointer-events:none; }
-  .bal:hover { transform:translateY(-2px); color:#ffe08a; border-color:var(--gold); box-shadow:0 6px 16px rgba(0,0,0,.4), 0 0 14px rgba(255,200,61,.45), inset 0 1px 0 rgba(255,255,255,.12); }
-  .bal:hover::before { transform:rotate(-18deg) scale(1.15); }
-  .bal:hover::after { left:130%; }
-  .bal:active { transform:translateY(0) scale(.96); box-shadow:0 1px 4px rgba(0,0,0,.4); }
-  .bal:focus-visible { outline:2px solid var(--gold); outline-offset:2px; }
-  button { background:var(--brand); color:#06200f; border:0; padding:10px 12px; border-radius:10px; font-weight:700; font-size:.9rem; cursor:pointer; font-family:inherit; }
-  button.alt { background:#223a2e; color:var(--txt); } button.gold { background:var(--gold); color:#2a1f00; }
-  button.pill { background:var(--card); color:var(--txt); border:1px solid var(--line); padding:8px 10px; border-radius:20px; font-size:.8rem; }
-  a.pill { background:var(--card); color:var(--txt); border:1px solid var(--line); padding:8px 10px; border-radius:20px; font-size:.8rem; font-weight:700; text-decoration:none; display:inline-block; cursor:pointer; }
-  header h1 { white-space:nowrap; }
-  @media (max-width:480px) {
-    header { padding:8px 8px; }
-    header h1 { font-size:.9rem; }
-    .right { gap:4px; }
-    button.pill, a.pill { padding:7px 8px; font-size:.75rem; }
-    .bal { padding:7px 11px 7px 8px; font-size:.85rem; gap:4px; }
-    #toast { top:96px; }
+:root {
+  color-scheme: light dark;
+  --bg: #f3f6fb;
+  --card: #ffffff;
+  --text: #172438;
+  --muted: #68778b;
+  --border: #dce5ef;
+  --primary: #1678e8;
+  --primary-text: #ffffff;
+  --soft: #eaf3ff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0b1220;
+    --card: #151e2e;
+    --text: #edf4ff;
+    --muted: #a0aec2;
+    --border: #29374c;
+    --primary: #3189f4;
+    --primary-text: #ffffff;
+    --soft: #192a42;
   }
-  button:disabled { opacity:.4; cursor:not-allowed; }
-  #hint { position:fixed; bottom:16px; left:50%; transform:translateX(-50%); background:rgba(10,20,15,.7); padding:8px 14px; border-radius:20px; font-size:.8rem; color:#fff; z-index:4; white-space:nowrap; pointer-events:none; }
-  #panel { position:fixed; bottom:12px; left:50%; transform:translateX(-50%); width:min(430px,94%); background:var(--card); border:1px solid var(--line); border-radius:16px; padding:14px; z-index:8; backdrop-filter:blur(6px); max-height:62vh; overflow-y:auto; }
-  .hidden { display:none !important; }
-  #panel h3 { font-size:1rem; margin-bottom:2px; } #panel .x { position:absolute; top:8px; right:8px; padding:6px 10px; }
-  .sub { color:var(--mut); font-size:.82rem; margin-bottom:10px; }
-  .cgrid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
-  .cgrid button { text-align:left; background:#223a2e; color:var(--txt); line-height:1.3; }
-  .cgrid button small { display:block; color:var(--mut); font-weight:500; font-size:.72rem; }
-  .bar { height:10px; background:#0b120f; border-radius:6px; overflow:hidden; margin:8px 0; } .bar i { display:block; height:100%; background:var(--brand); width:0; }
-  .full { width:100%; margin-top:6px; }
-  .modal { position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:30; display:flex; align-items:center; justify-content:center; padding:16px; }
-  .modal .box { background:#16241d; border:1px solid var(--line); border-radius:16px; padding:18px; width:min(400px,100%); position:relative; }
-  .row { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--line); font-size:.92rem; }
-  .note { font-size:.78rem; color:var(--mut); margin-top:10px; line-height:1.4; }
-  #overlay { position:fixed; inset:0; background:rgba(0,0,0,.88); display:none; align-items:center; justify-content:center; z-index:50; padding:20px; text-align:center; }
-  #overlay.on { display:flex; } #overlay .box { background:#16241d; padding:24px; border-radius:16px; max-width:340px; border:1px solid var(--line); }
-  #toast { position:fixed; top:64px; left:50%; transform:translateX(-50%); background:var(--brand); color:#06200f; padding:8px 16px; border-radius:20px; font-weight:700; opacity:0; transition:.3s; z-index:60; pointer-events:none; }
-  #toast.on { opacity:1; }
-  input { width:100%; padding:11px 12px; border-radius:10px; border:1px solid var(--line); background:#0b120f; color:var(--txt); font-size:.95rem; margin-bottom:8px; font-family:inherit; user-select:text; -webkit-user-select:text; }
-  .tabs { display:flex; gap:6px; margin-bottom:10px; } .tabs button { flex:1; }
-  .msg { color:#ff8a80; font-size:.8rem; min-height:1.1em; margin-bottom:6px; }
-  .row b { word-break:break-all; text-align:right; padding-left:12px; }
-  #err { position:fixed; inset:0; background:#0e1512; display:none; align-items:center; justify-content:center; text-align:center; padding:30px; z-index:100; line-height:1.5; }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  padding: 22px;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  display: grid;
+  place-items: center;
+}
+
+.container {
+  width: 100%;
+  max-width: 460px;
+}
+
+.brand {
+  text-align: center;
+  margin-bottom: 26px;
+}
+
+.logo {
+  width: 68px;
+  height: 68px;
+  display: grid;
+  place-items: center;
+  margin: auto auto 14px;
+  background: var(--primary);
+  color: white;
+  border-radius: 22px;
+  font-size: 28px;
+  font-weight: 900;
+}
+
+.brand h1 {
+  margin: 0;
+  font-size: 30px;
+  letter-spacing: -1px;
+}
+
+.brand p {
+  margin: 8px 0 0;
+  color: var(--muted);
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  padding: 26px;
+  border-radius: 22px;
+  box-shadow: 0 12px 40px rgba(0,0,0,.05);
+}
+
+.card h2 {
+  margin: 0 0 10px;
+  font-size: 22px;
+}
+
+.description {
+  color: var(--muted);
+  margin: 0 0 22px;
+  line-height: 1.6;
+}
+
+button, .button {
+  width: 100%;
+  display: block;
+  border: none;
+  border-radius: 12px;
+  padding: 14px 16px;
+  font-size: 16px;
+  font-weight: 750;
+  text-decoration: none;
+  text-align: center;
+  cursor: pointer;
+  transition: .2s;
+}
+
+button:active, .button:active {
+  transform: scale(.98);
+}
+
+.primary {
+  background: var(--primary);
+  color: var(--primary-text);
+}
+
+.secondary {
+  background: var(--soft);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.actions {
+  display: grid;
+  gap: 12px;
+}
+
+.divider {
+  text-align: center;
+  color: var(--muted);
+  margin: 18px 0;
+  font-size: 13px;
+}
+
+.user-box {
+  background: var(--soft);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 18px;
+  margin: 18px 0;
+}
+
+.avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: white;
+  display: grid;
+  place-items: center;
+  font-weight: 900;
+  font-size: 20px;
+  margin-bottom: 12px;
+}
+
+.user-name {
+  font-size: 19px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.user-email {
+  font-size: 14px;
+  color: var(--muted);
+  margin-top: 5px;
+  overflow-wrap: anywhere;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: #16a36a;
+  margin-top: 12px;
+  font-weight: 700;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  background: #16a36a;
+  border-radius: 50%;
+}
+
+.message {
+  text-align: center;
+  color: var(--muted);
+  padding: 15px 0;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.footer {
+  text-align: center;
+  margin-top: 22px;
+  color: var(--muted);
+  font-size: 12px;
+}
 </style>
 </head>
+
 <body>
 
-<canvas id="c"></canvas>
+<main class="container">
 
-<header>
-  <h1>Urgent<span>Cash</span> Farm</h1>
-  <div class="right">
-    <a class="pill" id="acctBtn" href="profile.html">👤</a>
-    <button class="pill" id="muteBtn" onclick="toggleMute()">🔊</button>
-    <button class="pill" onclick="openWallet()">💼</button>
-    <button class="pill" id="curBtn" onclick="nextCurrency()">USD ⇄</button>
-    <a class="bal" id="coins" href="wallet.html">$0.00</a>
-  </div>
-</header>
+  <header class="brand">
+    <div class="logo">UC</div>
+    <h1>Urgent Cash</h1>
+    <p>Your account, one place.</p>
+  </header>
 
-<div id="hint">Tap a plot · drag to look around · pinch to zoom</div>
-<div id="panel" class="hidden"></div>
+  <section class="card">
 
-<div id="wallet" class="modal hidden">
-  <div class="box">
-    <h3 style="margin-bottom:10px">💼 Wallet</h3>
-    <div class="row"><span>Account</span><b id="wAcct">Guest</b></div>
-    <div class="row"><span>Balance</span><b id="wBal">$0.00</b></div>
-    <div class="row"><span>In US dollars</span><b id="wUsd">$0.00</b></div>
-    <div class="row"><span>In naira</span><b id="wNgn">₦0.00</b></div>
-    <div class="row"><span>Plots unlocked</span><b id="wPlots">0</b></div>
-    <div class="row"><span>Ads watched</span><b id="wAds">0</b></div>
-    <div class="row"><span>Total harvests</span><b id="wHarv">0</b></div>
-    <button class="gold full" id="dailyBtn" onclick="daily()">Claim daily bonus</button>
-    <button class="alt full" disabled>Withdraw (not live yet)</button>
-    <button class="alt full" onclick="closeWallet()">Close</button>
-    <p class="note">This is a game balance. Withdrawals need sign-in, identity checks and a payment backend, which this front-end file does not include. Exchange rates are fixed numbers in CONFIG, not live rates.</p>
-  </div>
-</div>
+    <!-- Loading -->
+    <div id="loading">
+      <div class="message">Checking your account...</div>
+    </div>
 
-<div id="auth" class="modal hidden">
-  <div class="box">
-    <h3 style="margin-bottom:10px">👤 Account</h3>
-    <div id="authOut">
-      <div class="tabs">
-        <button id="tabIn" class="gold" onclick="authMode('in')">Sign in</button>
-        <button id="tabUp" class="alt" onclick="authMode('up')">Create account</button>
+    <!-- Logged Out -->
+    <div id="loggedOut" class="hidden">
+      <h2>Welcome</h2>
+      <p class="description">
+        Sign in to your account or create an account to continue.
+      </p>
+
+      <div class="actions">
+        <a href="login.html" class="button primary">Login</a>
+        <a href="register.html" class="button secondary">Create Account</a>
       </div>
-      <input id="aEmail" type="email" placeholder="Email" autocomplete="email">
-      <input id="aPass" type="password" placeholder="Password (6+ characters)" autocomplete="current-password">
-      <p class="msg" id="aMsg"></p>
-      <button class="full" id="aGo" onclick="authSubmit()">Sign in</button>
-      <button class="alt full" onclick="googleSignIn()">Continue with Google</button>
-      <button class="alt full" id="aForgot" onclick="resetPass()">Forgot password?</button>
     </div>
-    <div id="authIn" class="hidden">
-      <div class="row"><span>Signed in as</span><b id="aWho"></b></div>
-      <p class="note">Your farm saves to your account automatically, so you can play on any device.</p>
-      <button class="alt full" onclick="signOutUser()">Sign out</button>
+
+    <!-- Logged In -->
+    <div id="loggedIn" class="hidden">
+      <h2>Welcome back!</h2>
+      <p class="description">
+        You're signed in. Your account details are below.
+      </p>
+
+      <div class="user-box">
+        <div class="avatar" id="avatar">U</div>
+        <div class="user-name" id="userName">User</div>
+        <div class="user-email" id="userEmail">user@email.com</div>
+
+        <div class="status">
+          <span class="status-dot"></span>
+          Signed in
+        </div>
+      </div>
+
+      <div class="actions">
+        <a href="home.html" class="button primary">Enter Dashboard</a>
+        <button id="logoutBtn" class="secondary" type="button">Logout</button>
+      </div>
     </div>
-    <button class="alt full" onclick="closeAuth()">Close</button>
-  </div>
-</div>
 
-<div id="overlay"><div class="box">
-  <h3>Advert</h3>
-  <p class="sub">Placeholder ad. Connect a real rewarded-ad network (AdMob, etc.) in showAd().</p>
-  <p style="font-size:2rem" id="adCount">5</p>
-</div></div>
-<div id="toast"></div>
-<div id="err">The 3D farm could not load.<br>Check your internet connection and refresh the page.</div>
+    <!-- Error -->
+    <div id="errorBox" class="hidden">
+      <p class="description" id="errorText"></p>
+      <button class="secondary" onclick="location.reload()">Try Again</button>
+    </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-<script>
-/* ============ CONFIG: EDIT THESE ============ */
-const POINTS_PER_USD = 100;    // internal points worth $1. Keep this tied to your real ad income.
-/* Rates = how much of each currency equals $1. NOT live. Check a real rate and update. */
-const CURRENCIES = [
-  { code:"USD", symbol:"$", rate:1,    locale:"en-US" },
-  { code:"NGN", symbol:"₦", rate:1500, locale:"en-NG" }
-];
-const AD_SECONDS = 5;
-const START_PLOTS = 1;                   // you begin with one plot
-const MAX_PLOTS = 12;                    // 4 columns x 3 rows
-const PLOT_COST = n => 50 * n * n;       // points to unlock plot number n+1 (n = plots owned)
-const DAILY_BONUS = 25;                  // points
-const WATER_PER_CROP = 3;                // one watering lasts (grow time / this) so a crop needs about 3 waterings
-const WATER_MIN_SECS = 20;               // ...but never less than this many seconds
-const FERT_SPEED = 1.5;                  // fertilized crops grow this much faster (while watered)
-const FERT_COST = c => Math.max(2, Math.ceil(c.cost * 0.6));   // points per fertilizer (c = crop)
-const HARVEST_BOOST = 1.5;               // optional ad booster multiplies one harvest's payout
-const CROPS = {                          // cost, sell in points; secs = grow time
-  corn:       { name:"Corn",       em:"🌽", seed:0,    cost:5,   sell:15,   secs:30   },   // free starter crop
-  tomato:     { name:"Tomato",     em:"🍅", seed:20,   cost:15,  sell:50,   secs:90   },   // seed = one-time price to unlock the crop
-  pepper:     { name:"Pepper",     em:"🌶️", seed:50,   cost:30,  sell:100,  secs:150  },
-  cassava:    { name:"Cassava",    em:"🥔", seed:80,   cost:40,  sell:150,  secs:240  },
-  pumpkin:    { name:"Pumpkin",    em:"🎃", seed:150,  cost:80,  sell:320,  secs:420  },
-  yam:        { name:"Yam",        em:"🍠", seed:250,  cost:120, sell:480,  secs:600  },
-  watermelon: { name:"Watermelon", em:"🍉", seed:450,  cost:220, sell:950,  secs:900  },
-  pineapple:  { name:"Pineapple",  em:"🍍", seed:900,  cost:500, sell:2400, secs:1800 }
+  </section>
+
+  <footer class="footer">
+    Urgent Cash &bull; Secure Account Access
+  </footer>
+
+</main>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
+
+import {
+  getAuth,
+  onAuthStateChanged,
+  signOut
+} from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
+
+// Firebase Configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyA2LtEPKS6jU3nIsAj-KV3MoxmUULj_5a8",
+  authDomain: "urgent-cash-76162.firebaseapp.com",
+  projectId: "urgent-cash-76162",
+  storageBucket: "urgent-cash-76162.firebasestorage.app",
+  messagingSenderId: "1000483783652",
+  appId: "1:1000483783652:web:f4406e7adb5016b5167df1",
+  measurementId: "G-PN610M8757"
 };
-/* Firebase project settings (Firebase console > Project settings > Your apps > Web app). */
-const FIREBASE_CONFIG = {
-  apiKey:"YOUR_API_KEY",
-  authDomain:"YOUR_PROJECT.firebaseapp.com",
-  projectId:"YOUR_PROJECT",
-  appId:"YOUR_APP_ID"
-};
-/* ============================================ */
 
-/* ---------- STATE ---------- */
-const S0 = { pts:20, plots:Array(START_PLOTS).fill(null), seeds:["corn"], ads:0, harv:0, daily:"", cur:0, mute:false };
-const GUEST_KEY = "urgentcash_farm3";
-const fresh = () => JSON.parse(JSON.stringify(S0));
-function migrate(st){                                    // old saves (start time only) -> watering model
-  const now = Date.now();
-  st.plots = (st.plots || []).map(p => {
-    if (!p || p.grown !== undefined || !CROPS[p.key]) return p;
-    const tot = CROPS[p.key].secs*1000, g = Math.max(0, Math.min(tot, now - p.at));
-    return { key:p.key, grown:g, t:now, wetUntil:now + (tot-g), fert:false, boosted:!!p.boosted, hboost:false };
-  });
-  return st;
-}
-const load = key => { try { const r = localStorage.getItem(key); if (r) return migrate(Object.assign(fresh(), JSON.parse(r))); } catch(e) {} return null; };
-let S = load(GUEST_KEY) || fresh();
-if (!CURRENCIES[S.cur]) S.cur = 0;
-let user = null, synced = false, cloudTimer = null;      // signed-in account, cloud copy loaded?, debounce timer
-const save = () => {
-  try { localStorage.setItem(user ? GUEST_KEY+"_"+user.uid : GUEST_KEY, JSON.stringify(S)); } catch(e) {}
-  if (user && synced) { clearTimeout(cloudTimer); cloudTimer = setTimeout(pushCloud, 2000); }
-};
-const $ = id => document.getElementById(id);
-const toast = m => { const t=$("toast"); t.textContent=m; t.classList.add("on"); setTimeout(()=>t.classList.remove("on"),1600); };
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
 
-/* ---------- SOUND (synthesized, no files needed) ---------- */
-let ac = null;
-function actx(){
-  if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {} }
-  if (ac && ac.state === "suspended") ac.resume();
-  return ac;
+// Elements
+const loading = document.getElementById("loading");
+const loggedOut = document.getElementById("loggedOut");
+const loggedIn = document.getElementById("loggedIn");
+const errorBox = document.getElementById("errorBox");
+const errorText = document.getElementById("errorText");
+const userName = document.getElementById("userName");
+const userEmail = document.getElementById("userEmail");
+const avatar = document.getElementById("avatar");
+const logoutBtn = document.getElementById("logoutBtn");
+
+function show(element) {
+  element.classList.remove("hidden");
 }
-function tone(freq, dur, type, vol, when, slide){
-  if (S.mute) return; const a = actx(); if (!a) return;
-  const t = a.currentTime + (when||0), o = a.createOscillator(), g = a.createGain();
-  o.type = type || "sine"; o.frequency.setValueAtTime(freq, t);
-  if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(40, freq+slide), t+dur);
-  g.gain.setValueAtTime(vol||.12, t); g.gain.exponentialRampToValueAtTime(0.001, t+dur);
-  o.connect(g); g.connect(a.destination); o.start(t); o.stop(t+dur+.03);
+
+function hide(element) {
+  element.classList.add("hidden");
 }
-const sfx = {
-  click()  { tone(560,.07,"square",.06); },
-  tap()    { tone(220,.09,"triangle",.14); },
-  plant()  { tone(300,.14,"sine",.16,0,220); tone(460,.12,"sine",.12,.09); },
-  harvest(){ [523,659,784,1047].forEach((f,i)=>tone(f,.16,"triangle",.14,i*.07)); },
-  coin()   { tone(988,.08,"square",.07); tone(1319,.16,"square",.07,.07); },
-  unlock() { [392,523,659].forEach((f,i)=>tone(f,.14,"sawtooth",.07,i*.08)); },
-  error()  { tone(170,.22,"sawtooth",.09); }
-};
-/* every button press makes a sound */
-document.addEventListener("pointerdown", e => {
-  actx(); startMusic();
-  const b = e.target.closest && e.target.closest("button, a");
-  if (b) { if (b.disabled) sfx.error(); else sfx.click(); }
-}, true);
-/* ---------- BACKGROUND MUSIC: calm farm tune + breeze + birds (synthesized) ---------- */
-const MUSIC_VOL = .6;                    // raise or lower the background music here (0 to 1)
-const BPM = 72;
-const PENT = [261.63,293.66,329.63,392.00,440.00,523.25,587.33,659.25];         // C major pentatonic
-const CHORDS = [[130.81,196.00,329.63],[110.00,164.81,261.63],[87.31,130.81,220.00],[98.00,146.83,246.94]];   // C, Am, F, G
-let mGain = null, mTimer = null, mStep = 0, mNext = 0;
-function mtone(freq, t, dur, type, vol){
-  const o = ac.createOscillator(), g = ac.createGain();
-  o.type = type; o.frequency.value = freq;
-  g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + Math.min(.06, dur/3)); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
-  o.connect(g); g.connect(mGain); o.start(t); o.stop(t + dur + .05);
-}
-function musicTick(){
-  if (S.mute || !ac || ac.state !== "running") return;
-  const beat = 60/BPM;
-  if (mNext < ac.currentTime) mNext = ac.currentTime + .05;       // catch up after the tab was in the background
-  while (mNext < ac.currentTime + 1.2) {
-    const ch = CHORDS[Math.floor(mStep/4) % 4];
-    if (mStep % 4 === 0) ch.forEach(f => mtone(f, mNext, beat*4.2, "triangle", .05));            // warm pad
-    [0,.5].forEach(h => {                                                                          // soft plucked melody
-      if (Math.random() < .6) {
-        const f = Math.random() < .6 ? ch[Math.floor(Math.random()*3)] * (Math.random()<.5 ? 2 : 4) : PENT[Math.floor(Math.random()*PENT.length)];
-        mtone(f, mNext + h*beat, beat*1.1, "sine", .06);
-      }
-    });
-    if (Math.random() < .12) { const w = mNext - ac.currentTime; tone(2600,.07,"sine",.012,w,700); tone(3100,.06,"sine",.012,w+.1,-500); }   // little bird chirp
-    mNext += beat; mStep++;
+
+// Check login state
+onAuthStateChanged(auth, (user) => {
+  hide(loading);
+  hide(errorBox);
+
+  if (user) {
+    // User is logged in
+    hide(loggedOut);
+    show(loggedIn);
+
+    const name = user.displayName || "User";
+    const email = user.email || "No email available";
+
+    userName.textContent = name;
+    userEmail.textContent = email;
+
+    // First letter avatar
+    avatar.textContent = name.charAt(0).toUpperCase();
+  } else {
+    // User is not logged in
+    hide(loggedIn);
+    show(loggedOut);
   }
-}
-function startMusic(){
-  const a = actx(); if (!a || mTimer) return;
-  mGain = a.createGain(); mGain.gain.value = S.mute ? 0 : MUSIC_VOL; mGain.connect(a.destination);
-  const buf = a.createBuffer(1, a.sampleRate*2, a.sampleRate), d = buf.getChannelData(0);
-  for (let i=0;i<d.length;i++) d[i] = Math.random()*2-1;
-  const src = a.createBufferSource(); src.buffer = buf; src.loop = true;                          // gentle breeze
-  const lp = a.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 420;
-  const ng = a.createGain(); ng.gain.value = .02;
-  src.connect(lp); lp.connect(ng); ng.connect(mGain); src.start();
-  mNext = a.currentTime + .1; mTimer = setInterval(musicTick, 400);
-}
-["click","touchend","keydown"].forEach(ev => document.addEventListener(ev, () => { actx(); startMusic(); }, true));
-
-function toggleMute(){
-  S.mute = !S.mute; save(); render();
-  if (mGain && ac) { mGain.gain.setTargetAtTime(S.mute ? 0 : MUSIC_VOL, ac.currentTime, .1); if (!S.mute) mNext = ac.currentTime + .1; }
-  if (!S.mute) sfx.click();
-}
-
-/* ---------- MONEY ---------- */
-function money(pts, curIndex){
-  const c = CURRENCIES[curIndex===undefined ? S.cur : curIndex];
-  const v = pts / POINTS_PER_USD * c.rate;
-  const d = POINTS_PER_USD > 100 && Math.abs(v) < 1 && v !== 0 ? 3 : 2;
-  return c.symbol + v.toLocaleString(c.locale, { minimumFractionDigits:d, maximumFractionDigits:d });
-}
-function nextCurrency(){ S.cur = (S.cur+1) % CURRENCIES.length; save(); render(); toast("Currency: "+CURRENCIES[S.cur].code); }
-
-/* ---------- ADS (placeholder) ---------- */
-function showAd(done){
-  $("overlay").classList.add("on"); let s = AD_SECONDS; $("adCount").textContent = s;
-  const iv = setInterval(()=>{ s--; $("adCount").textContent = s;
-    if (s<=0){ clearInterval(iv); $("overlay").classList.remove("on"); S.ads++; done(); save(); render(); } },1000);
-}
-
-/* ---------- FARM LOGIC ---------- */
-let sel = -1, panelSig = "";
-/* A plot grows only while it is watered. p = { key, grown (ms), t (last update), wetUntil, fert, boosted, hboost } */
-const totalMs = p => CROPS[p.key].secs*1000;
-const speed = p => p.fert ? FERT_SPEED : 1;
-const waterMs = key => Math.max(WATER_MIN_SECS, Math.round(CROPS[key].secs/WATER_PER_CROP))*1000;
-function prog(p, now){ now = now || Date.now(); const wet = Math.max(0, Math.min(now, p.wetUntil) - p.t); return Math.min(totalMs(p), p.grown + wet*speed(p)); }
-function settle(p){ const now = Date.now(); p.grown = prog(p, now); p.t = now; }     // commit progress before changing water/fertilizer
-const payout = p => Math.round(CROPS[p.key].sell * (p.hboost ? HARVEST_BOOST : 1));
-function plotState(i){
-  if (i >= S.plots.length) return { kind:"locked" };
-  const p = S.plots[i]; if (!p) return { kind:"empty" };
-  const now = Date.now(), g = prog(p, now), tot = totalMs(p), wetLeft = Math.max(0, p.wetUntil - now);
-  const kind = g >= tot ? "ready" : wetLeft > 0 ? "growing" : "thirsty";
-  return { kind, p, frac:g/tot, left:(tot-g)/speed(p), wetLeft };
-}
-function fmt(ms){ const s=Math.ceil(ms/1000); return s>=60 ? Math.floor(s/60)+"m "+(s%60)+"s" : s+"s"; }
-
-function plant(i, key){
-  const c = CROPS[key];
-  if (!S.seeds.includes(key)) { sfx.error(); return toast("Buy these seeds first"); }
-  if (S.pts < c.cost) { sfx.error(); return toast("Not enough balance"); }
-  S.pts -= c.cost; S.plots[i] = { key, grown:0, t:Date.now(), wetUntil:0, fert:false, boosted:false, hboost:false };
-  sfx.plant(); toast("Planted. Water it so it grows"); save(); render();
-}
-function harvest(i){
-  const p = S.plots[i]; if (!p || prog(p) < totalMs(p)) return;
-  const g = payout(p); S.pts += g; S.harv++; S.plots[i] = null;
-  sfx.harvest(); toast("+" + money(g)); save(); render();
-}
-function boostPlot(i){
-  const p = S.plots[i]; if (!p || p.boosted) return;
-  showAd(()=>{ settle(p); p.grown += (totalMs(p) - p.grown)/2; p.boosted = true; sfx.coin(); toast("Grow time halved"); });
-}
-function water(i, quiet){
-  const p = S.plots[i]; if (!p || prog(p) >= totalMs(p)) return false;
-  settle(p); p.wetUntil = Date.now() + waterMs(p.key);
-  if (!quiet) { sfx.coin(); toast("💧 Watered"); save(); render(); }
-  return true;
-}
-function waterAll(){
-  let n = 0; S.plots.forEach((p,i) => { if (p && water(i, true)) n++; });
-  if (!n) { sfx.error(); return toast("Nothing to water"); }
-  sfx.coin(); toast("💧 Watered " + n + (n>1 ? " plots" : " plot")); save(); render();
-}
-function fertilize(i){
-  const p = S.plots[i]; if (!p || p.fert || prog(p) >= totalMs(p)) return;
-  const c = FERT_COST(CROPS[p.key]);
-  if (S.pts < c) { sfx.error(); return toast("Need " + money(c)); }
-  settle(p); S.pts -= c; p.fert = true; sfx.unlock(); toast("🌱 Fertilized"); save(); render();
-}
-function boostHarvest(i){
-  const p = S.plots[i]; if (!p || p.hboost) return;
-  showAd(()=>{ p.hboost = true; sfx.coin(); toast("Harvest booster on"); });
-}
-function buyPlot(){
-  const c = PLOT_COST(S.plots.length);
-  if (S.pts < c) { sfx.error(); return toast("Need " + money(c)); }
-  S.pts -= c; S.plots.push(null); sfx.unlock(); toast("New plot unlocked"); save(); render();
-}
-function buySeeds(key){
-  const c = CROPS[key]; if (S.seeds.includes(key)) return;
-  if (S.pts < c.seed) { sfx.error(); return toast("Need " + money(c.seed)); }
-  S.pts -= c.seed; S.seeds.push(key); sfx.unlock(); toast(c.name + " seeds unlocked"); save(); render();
-}
-function daily(){
-  const day = new Date().toDateString();
-  if (S.daily === day) { sfx.error(); return toast("Already claimed today"); }
-  S.daily = day; S.pts += DAILY_BONUS; sfx.coin(); toast("+" + money(DAILY_BONUS)); save(); render();
-}
-/* The panel appears the moment a plot is tapped; the browser's follow-up "click" from that same tap can land on a panel
-   button (e.g. the first crop) and act by itself. Ignore panel clicks for a moment after a plot is selected. */
-let clickGuard = 0;
-document.addEventListener("click", e => {
-  if (performance.now() < clickGuard && e.target.closest && e.target.closest("#panel")) { e.stopPropagation(); e.preventDefault(); }
-}, true);
-function select(i){ sel = i; if (i >= 0) clickGuard = performance.now() + 450; panelSig = ""; renderPanel(true); }
-function closePanel(){ select(-1); }
-function openWallet(){ $("wallet").classList.remove("hidden"); render(); }
-function closeWallet(){ $("wallet").classList.add("hidden"); }
-
-/* ---------- UI RENDER ---------- */
-function renderPanel(force){
-  const el = $("panel");
-  if (sel < 0) { el.classList.add("hidden"); $("hint").classList.remove("hidden"); return; }
-  $("hint").classList.add("hidden"); el.classList.remove("hidden");
-  const st = plotState(sel);
-  const sig = [sel, st.kind, st.p && st.p.key, st.p && st.p.boosted, st.p && st.p.fert, st.p && st.p.hboost, S.pts, S.cur, S.plots.length, S.seeds.length].join("|");
-  if (sig !== panelSig || force) {
-    panelSig = sig; let h = `<button class="alt x" onclick="closePanel()">✕</button>`;
-    if (st.kind === "locked") {
-      if (sel === S.plots.length) {
-        const c = PLOT_COST(sel);
-        h += `<h3>🔒 Locked plot</h3><p class="sub">Unlock this plot to grow more crops.</p>
-              <button class="gold full" ${S.pts<c?"disabled":""} onclick="buyPlot()">Unlock for ${money(c)}</button>`;
-      } else h += `<h3>🔒 Locked plot</h3><p class="sub">Unlock the plots before this one first.</p>`;
-    } else if (st.kind === "empty") {
-      h += `<h3>🟫 Empty plot</h3><p class="sub" style="color:var(--gold);font-weight:700">You must select a crop to cultivate</p><div class="cgrid">` +
-        Object.entries(CROPS).map(([k,c]) => S.seeds.includes(k)
-          ? `<button ${S.pts<c.cost?"disabled":""} onclick="plant(${sel},'${k}')">${c.em} ${c.name}<small>Plant ${money(c.cost)} → ${money(c.sell)} · ${fmt(c.secs*1000)}</small></button>`
-          : `<button ${S.pts<c.seed?"disabled":""} onclick="buySeeds('${k}')">🔒 ${c.name} seeds<small>Buy for ${money(c.seed)} · earns ${money(c.sell)} per harvest</small></button>`).join("") + `</div>`;
-    } else if (st.kind === "growing" || st.kind === "thirsty") {
-      const c = CROPS[st.p.key], fc = FERT_COST(c), dry = st.kind === "thirsty";
-      h += `<h3>${c.em} ${c.name} ${dry ? "is thirsty" : "growing"}</h3>
-            <div class="bar"><i id="pBar"></i></div><p class="sub" id="pLeft"></p>
-            <div class="bar"><i id="wBar" style="background:#4fc3f7"></i></div><p class="sub" id="wLeft"></p>
-            <button class="gold full" onclick="water(${sel})">💧 Water now</button>
-            <button class="alt full" ${st.p.fert||S.pts<fc?"disabled":""} onclick="fertilize(${sel})">${st.p.fert ? "🌱 Fertilized (+50% growth speed)" : "🌱 Fertilizer " + money(fc) + " · grows 50% faster"}</button>
-            <button class="alt full" ${st.p.boosted?"disabled":""} onclick="boostPlot(${sel})">${st.p.boosted?"Already boosted":"Watch ad: halve remaining time"}</button>`;
-    } else {
-      const c = CROPS[st.p.key];
-      h += `<h3>${c.em} ${c.name} is ready!</h3><p class="sub">Harvest it to earn ${money(payout(st.p))}${st.p.hboost ? " (booster on)" : ""}.</p>
-            <button class="gold full" onclick="harvest(${sel})">Harvest +${money(payout(st.p))}</button>
-            <button class="alt full" ${st.p.hboost?"disabled":""} onclick="boostHarvest(${sel})">${st.p.hboost ? "Booster active" : "Watch ad: harvest x" + HARVEST_BOOST + " (optional)"}</button>`;
-    }
-    el.innerHTML = h;
-  }
-  if (st.kind === "growing" || st.kind === "thirsty") {
-    const bar = $("pBar"), lt = $("pLeft"), wb = $("wBar"), wl = $("wLeft");
-    if (bar) bar.style.width = (st.frac*100) + "%";
-    if (lt) lt.textContent = st.kind === "thirsty" ? "Growth paused · " + fmt(st.left) + " of growing left" : fmt(st.left) + " left" + (st.left > st.wetLeft ? " · needs more water" : "");
-    if (wb) wb.style.width = Math.min(100, st.wetLeft/waterMs(st.p.key)*100) + "%";
-    if (wl) wl.textContent = st.kind === "thirsty" ? "💧 Dry. Water it to keep growing" : "💧 Watered · " + fmt(st.wetLeft) + " of water left";
-  }
-}
-function render(){
-  $("coins").textContent = money(S.pts);
-  $("curBtn").textContent = CURRENCIES[S.cur].code + " ⇄";
-  $("muteBtn").textContent = S.mute ? "🔇" : "🔊";
-  $("acctBtn").textContent = user ? "👤✓" : "👤";
-  $("wAcct").textContent = user ? (user.email || user.displayName || "Signed in") : "Guest";
-  $("aWho").textContent = user ? (user.email || user.displayName || "Player") : "";
-  $("authOut").classList.toggle("hidden", !!user); $("authIn").classList.toggle("hidden", !user);
-  $("wBal").textContent = money(S.pts); $("wUsd").textContent = money(S.pts,0);
-  $("wNgn").textContent = money(S.pts, CURRENCIES.length>1 ? 1 : 0);
-  $("wPlots").textContent = S.plots.length; $("wAds").textContent = S.ads; $("wHarv").textContent = S.harv;
-  $("dailyBtn").disabled = S.daily === new Date().toDateString();
-  renderPanel(false);
-}
-
-/* ---------- ACCOUNTS (Firebase Auth + Firestore cloud save) ---------- */
-const FB_READY = typeof firebase !== "undefined" && !/^YOUR_/.test(FIREBASE_CONFIG.apiKey);
-let auth = null, db = null, aMode = "in";
-if (FB_READY) { try { firebase.initializeApp(FIREBASE_CONFIG); auth = firebase.auth(); db = firebase.firestore(); } catch(e) { console.error(e); auth = db = null; } }
-const userDoc = () => db.collection("users").doc(user.uid);
-const amsg = t => { $("aMsg").textContent = t || ""; };
-
-function pushCloud(){
-  clearTimeout(cloudTimer);
-  if (!user || !db || !synced) return Promise.resolve();
-  return userDoc().set({ state: JSON.parse(JSON.stringify(S)), updatedAt: firebase.firestore.FieldValue.serverTimestamp() })
-    .catch(e => console.error("cloud save failed", e));
-}
-addEventListener("pagehide", () => { pushCloud(); });
-document.addEventListener("visibilitychange", () => { if (document.hidden) pushCloud(); });
-
-if (auth) auth.onAuthStateChanged(async u => {
-  if (!u) {                                              // signed out: back to the guest farm
-    if (user) { user = null; synced = false; S = load(GUEST_KEY) || fresh(); select(-1); }
-    render(); return;
-  }
-  user = u; synced = false;
-  try {
-    const snap = await userDoc().get();
-    if (snap.exists && snap.data().state) S = migrate(Object.assign(fresh(), snap.data().state));
-    else localStorage.removeItem(GUEST_KEY);             // first sign-in: this device's guest farm moves into the account, once
-    synced = true;
-  } catch(e) {
-    console.error(e); S = load(GUEST_KEY+"_"+u.uid) || S;  // offline: play from the saved copy, don't overwrite the cloud
-    toast("Could not reach your saved farm");
-  }
-  if (!CURRENCIES[S.cur]) S.cur = 0;
-  save(); if (synced) pushCloud();
-  select(-1); render();
 });
 
-function openAuth(){
-  if (!auth) { toast("Add your Firebase settings in FIREBASE_CONFIG"); return; }
-  amsg(""); $("auth").classList.remove("hidden"); render();
-}
-function closeAuth(){ $("auth").classList.add("hidden"); }
-function authMode(m){
-  aMode = m; amsg("");
-  $("tabIn").className = m === "in" ? "gold" : "alt"; $("tabUp").className = m === "up" ? "gold" : "alt";
-  $("aGo").textContent = m === "in" ? "Sign in" : "Create account";
-  $("aPass").autocomplete = m === "in" ? "current-password" : "new-password";
-  $("aForgot").classList.toggle("hidden", m === "up");
-}
-function authErr(e){
-  const c = (e && e.code) || "";
-  if (c === "auth/invalid-email") return "That email address is not valid.";
-  if (["auth/user-not-found","auth/wrong-password","auth/invalid-credential"].includes(c)) return "Wrong email or password.";
-  if (c === "auth/email-already-in-use") return "An account with this email already exists. Try signing in.";
-  if (c === "auth/weak-password") return "Choose a password with at least 6 characters.";
-  if (c === "auth/too-many-requests") return "Too many attempts. Wait a bit and try again.";
-  if (c === "auth/network-request-failed") return "No connection. Check your internet and try again.";
-  if (c === "auth/popup-closed-by-user" || c === "auth/cancelled-popup-request") return "";
-  return "Something went wrong. Please try again.";
-}
-async function authSubmit(){
-  const email = $("aEmail").value.trim(), pass = $("aPass").value;
-  if (!email || pass.length < 6) return amsg("Enter your email and a password of 6+ characters.");
-  $("aGo").disabled = true; amsg("");
+// Logout
+logoutBtn.addEventListener("click", async () => {
+  logoutBtn.disabled = true;
+  logoutBtn.textContent = "Logging out...";
+
   try {
-    if (aMode === "up") await auth.createUserWithEmailAndPassword(email, pass); else await auth.signInWithEmailAndPassword(email, pass);
-    closeAuth(); $("aPass").value = ""; toast(aMode === "up" ? "Account created" : "Welcome back");
-  } catch(e) { amsg(authErr(e)); }
-  $("aGo").disabled = false;
-}
-async function googleSignIn(){
-  const prov = new firebase.auth.GoogleAuthProvider(); amsg("");
-  try { await auth.signInWithPopup(prov); closeAuth(); toast("Welcome"); }
-  catch(e) {
-    if (e.code === "auth/popup-blocked" || e.code === "auth/operation-not-supported-in-this-environment") { try { return await auth.signInWithRedirect(prov); } catch(e2) { e = e2; } }
-    amsg(authErr(e));
+    await signOut(auth);
+  } catch (error) {
+    logoutBtn.disabled = false;
+    logoutBtn.textContent = "Logout";
+    alert("Unable to logout. Please try again.");
   }
-}
-async function resetPass(){
-  const email = $("aEmail").value.trim();
-  if (!email) return amsg("Type your email above first.");
-  try { await auth.sendPasswordResetEmail(email); amsg(""); toast("Reset email sent"); } catch(e) { amsg(authErr(e)); }
-}
-async function signOutUser(){
-  await pushCloud();
-  try { await auth.signOut(); } catch(e) { console.error(e); }
-  closeAuth(); toast("Signed out");
-}
-
-/* ============ 3D FARM ============ */
-let plotGroups = [];
-try {
-  if (typeof THREE === "undefined") throw new Error("three missing");
-  const cv = $("c");
-  const renderer = new THREE.WebGLRenderer({ canvas:cv, antialias:true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
-  renderer.setSize(innerWidth, innerHeight);
-  renderer.outputEncoding = THREE.sRGBEncoding;
-  renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-
-  const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x8fd3ff);
-  scene.fog = new THREE.Fog(0x8fd3ff, 38, 85);
-  const camera = new THREE.PerspectiveCamera(50, innerWidth/innerHeight, .1, 200);
-
-  scene.add(new THREE.HemisphereLight(0xffffff, 0x4a7a2a, .75));
-  const sun = new THREE.DirectionalLight(0xfff2d0, .95);
-  sun.position.set(12, 22, 10); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
-  Object.assign(sun.shadow.camera, { left:-24, right:24, top:24, bottom:-24, near:.5, far:70 });
-  scene.add(sun);
-
-  /* helpers */
-  const M = c => new THREE.MeshLambertMaterial({ color:c });
-  const fin = (m, parent, x, y, z) => { m.position.set(x||0, y||0, z||0); m.castShadow = true; m.receiveShadow = true; if (parent) parent.add(m); return m; };
-  const box  = (w,h,d,c,x,y,z,p) => fin(new THREE.Mesh(new THREE.BoxGeometry(w,h,d), M(c)), p, x,y,z);
-  const cyl  = (rt,rb,h,c,x,y,z,p,seg) => fin(new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,seg||8), M(c)), p, x,y,z);
-  const sph  = (r,c,x,y,z,p) => fin(new THREE.Mesh(new THREE.SphereGeometry(r,10,8), M(c)), p, x,y,z);
-  const cone = (r,h,c,x,y,z,p,seg) => fin(new THREE.Mesh(new THREE.ConeGeometry(r,h,seg||7), M(c)), p, x,y,z);
-
-  /* ground */
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(160,160), M(0x6fb84a));
-  ground.rotation.x = -Math.PI/2; ground.receiveShadow = true; scene.add(ground);
-  box(3, .04, 14, 0xb99567, 0, .02, 13, scene);                         // dirt path
-
-  /* fence */
-  const fence = new THREE.Group(); scene.add(fence);
-  const FX = 7.4, FZ1 = -4.6, FZ2 = 6.6;
-  for (let x=-FX; x<=FX+.01; x+=1.85) { cyl(.09,.09,1.1,0x8b5a2b,x,.55,FZ1,fence,6); cyl(.09,.09,1.1,0x8b5a2b,x,.55,FZ2,fence,6); }
-  for (let z=FZ1; z<=FZ2+.01; z+=1.85) { cyl(.09,.09,1.1,0x8b5a2b,-FX,.55,z,fence,6); cyl(.09,.09,1.1,0x8b5a2b,FX,.55,z,fence,6); }
-  [.45,.85].forEach(y => {
-    box(FX*2,.08,.08,0xa9733a,0,y,FZ1,fence); box(FX*2,.08,.08,0xa9733a,0,y,FZ2,fence);
-    box(.08,.08,FZ2-FZ1,0xa9733a,-FX,y,(FZ1+FZ2)/2,fence); box(.08,.08,FZ2-FZ1,0xa9733a,FX,y,(FZ1+FZ2)/2,fence);
-  });
-
-  /* barn */
-  const barn = new THREE.Group(); barn.position.set(0,0,-10.5); scene.add(barn);
-  box(7,3.6,4.6,0xb5322e,0,1.8,0,barn);
-  [-1,1].forEach(s => box(.1,.1,.1,0xffffff,0,0,0,barn)); // (placeholder keeps group simple)
-  box(1.9,2.4,.12,0x5b3a1e,0,1.2,2.33,barn);                              // door
-  box(2.1,.15,.14,0xffffff,0,2.5,2.34,barn); box(.15,2.5,.14,0xffffff,-1.0,1.25,2.34,barn); box(.15,2.5,.14,0xffffff,1.0,1.25,2.34,barn);
-  const roofA = box(7.6,.22,3.2,0x4a4a52,0,4.25,1.25,barn);  roofA.rotation.x = .62;
-  const roofB = box(7.6,.22,3.2,0x4a4a52,0,4.25,-1.25,barn); roofB.rotation.x = -.62;
-  const gable = new THREE.Shape(); gable.moveTo(-2.3,0); gable.lineTo(2.3,0); gable.lineTo(0,1.75); gable.lineTo(-2.3,0);
-  [-3.5,3.5].forEach(x => { const g = fin(new THREE.Mesh(new THREE.ExtrudeGeometry(gable,{depth:.12,bevelEnabled:false}), M(0xb5322e)), barn, x, 3.6, 0); g.rotation.y = Math.PI/2; g.position.x = x + (x<0?-.06:-.06); });
-  [[-3.5,0,-1.8],[2.8,.55,-.8]].forEach(h => { cyl(1,1,1.1,0xe8c85a,h[0]+(h[0]<0?-2.8:3.2),.55,6.0+h[2]*0,scene,12); });   // hay bales
-
-  /* windmill */
-  const wm = new THREE.Group(); wm.position.set(-13,0,-3); scene.add(wm);
-  cyl(.7,1.2,6,0xf0ead6,0,3,0,wm,10); cone(1.1,1.4,0xa33b2c,0,6.7,0,wm,10);
-  const blades = new THREE.Group(); blades.position.set(0,6.2,1.1); wm.add(blades);
-  for (let k=0;k<4;k++){ const b = box(.35,3.2,.06,0xffffff,0,1.7,0,null); const pv = new THREE.Group(); pv.rotation.z = k*Math.PI/2; pv.add(b); blades.add(pv); }
-  sph(.25,0x333333,0,6.2,1.1,wm);
-
-  /* trees */
-  function tree(x,z,s){ const t = new THREE.Group(); t.position.set(x,0,z); t.scale.setScalar(s||1); scene.add(t);
-    cyl(.28,.38,2,0x6b4423,0,1,0,t,7); sph(1.5,0x2f8a3c,0,3.1,0,t); sph(1.1,0x3a9e47,.7,3.9,.3,t); sph(1,0x2a7d36,-.7,3.7,-.4,t); }
-  [[-11,8,1],[11,7,1.1],[-12,-9,1.2],[13,-8,1],[9,15,.9],[-8,16,1],[19,2,1.2],[-20,6,1.1],[20,-14,1.3],[-18,-14,1.2]].forEach(t => tree(t[0],t[1],t[2]));
-
-  /* clouds */
-  const clouds = [];
-  for (let k=0;k<7;k++){ const c = new THREE.Group();
-    [[0,0,0,1.6],[1.6,.2,0,1.2],[-1.5,.1,.3,1.2],[.4,.6,0,1.1]].forEach(p => { const s = sph(p[3],0xffffff,p[0],p[1],p[2],c); s.castShadow = false; s.material.transparent = true; s.material.opacity = .92; });
-    c.position.set(-45 + k*14 + Math.random()*6, 15 + Math.random()*6, -22 + Math.random()*30); scene.add(c); clouds.push(c); }
-
-  /* ---------- PLOTS ---------- */
-  /* ---- realistic crops: each has 4 growth forms (sprout, young, grown, ripe) ---- */
-  const GC = {}, MC = {};
-  const geo = (k,f) => GC[k] || (GC[k] = f());
-  const cmat = c => MC[c] || (MC[c] = new THREE.MeshLambertMaterial({ color:c }));
-  const G = {
-    cy:  () => geo("cy",  () => new THREE.CylinderGeometry(1,1,1,6)),
-    cyT: () => geo("cyT", () => new THREE.CylinderGeometry(.55,1,1,6)),
-    cn:  () => geo("cn",  () => new THREE.ConeGeometry(1,1,6)),
-    sp:  () => geo("sp",  () => new THREE.SphereGeometry(1,8,6))
-  };
-  function part(geom, color, parent, x,y,z, sx,sy,sz){
-    const o = new THREE.Mesh(geom, cmat(color)); o.position.set(x,y,z); o.scale.set(sx,sy,sz);
-    o.castShadow = true; parent.add(o); return o;
-  }
-  const stem = (p,c,x,y0,z,h,r) => part(G.cy(), c, p, x, y0+h/2, z, r, h, r);
-  function leaf(parent, color, x,y,z, len, ang, tilt, wid){      // len = half-length of the leaf blade
-    const pv = new THREE.Group(); pv.position.set(x,y,z); pv.rotation.y = ang; parent.add(pv);
-    const pv2 = new THREE.Group(); pv2.rotation.z = tilt; pv.add(pv2);
-    return part(G.sp(), color, pv2, len, 0, 0, len, .022, len*(wid||.28));
-  }
-  const palmate = (p,x,y,z,len,count,color) => { for (let k=0;k<count;k++) leaf(p, color||0x3f9a3a, x,y,z, len, k/count*Math.PI*2, .3, .16); };
-
-  function buildCrop(key){
-    const root = new THREE.Group();
-    const stages = [0,1,2,3].map(() => { const s = new THREE.Group(); s.visible = false; root.add(s); return s; });
-    const SP6 = [[-.8,-.5],[0,-.5],[.8,-.5],[-.8,.5],[0,.5],[.8,.5]];
-    const SP4 = [[-.6,-.6],[.6,-.6],[-.6,.6],[.6,.6]];
-
-    if (key === "corn") {
-      SP6.forEach(([x,z],n) => {
-        stem(stages[0],0x6fbf45,x,0,z,.22,.03);
-        leaf(stages[0],0x7acb4f,x,.2,z,.08,n,.9); leaf(stages[0],0x7acb4f,x,.2,z,.08,n+Math.PI,.9);
-        stem(stages[1],0x5aae3a,x,0,z,.6,.045);
-        for (let k=0;k<4;k++) leaf(stages[1],0x62b843,x,.2+k*.12,z,.17,n+k*1.7,.8-k*.12);
-        [2,3].forEach(si => {
-          const ripe = si === 3;
-          stem(stages[si], ripe?0x9ab341:0x4a9e34, x,0,z,1.5,.055);
-          for (let k=0;k<5;k++) leaf(stages[si], ripe?0x93b13f:0x4fa83a, x,.4+k*.22,z,.24,n+k*1.9,.3-k*.1);
-          part(G.cn(), ripe?0xd9c76a:0x9bc45a, stages[si], x,1.62,z, .06,.3,.06);                  // tassel
-          if (ripe) {
-            part(G.cyT(),0x6cb544,stages[si], x+.09,.95,z, .08,.34,.08);                               // husk
-            part(G.cy(), 0xf2c230,stages[si], x+.09,1.14,z, .055,.1,.055);                             // golden kernels peeking out
-            if (n%2===0) { part(G.cyT(),0x6cb544,stages[si], x-.09,.72,z, .07,.3,.07); part(G.cy(),0xf2c230,stages[si], x-.09,.89,z, .05,.09,.05); }
-          }
-        });
-      });
-    } else if (key === "tomato") {
-      SP4.forEach(([x,z],n) => {
-        stem(stages[0],0x6fbf45,x,0,z,.15,.02);
-        leaf(stages[0],0x7acb4f,x,.14,z,.06,n,.3,.5); leaf(stages[0],0x7acb4f,x,.14,z,.06,n+Math.PI,.3,.5);
-        stem(stages[1],0x5aae3a,x,0,z,.4,.03);
-        for (let k=0;k<3;k++) { leaf(stages[1],0x4fa83a,x,.15+k*.1,z,.14,n+k*1.1,.5); leaf(stages[1],0x4fa83a,x,.15+k*.1,z,.14,n+k*1.1+Math.PI,.5); }
-        [2,3].forEach(si => {
-          stem(stages[si],0x8b6b3a,x+.05,0,z,1.2,.02);                                              // wooden stake
-          stem(stages[si],0x4a9e34,x,0,z,.85,.04);
-          for (let k=0;k<6;k++) { leaf(stages[si],0x3f9a3a,x,.2+k*.11,z,.17,n+k*1.3,.45); leaf(stages[si],0x4aa845,x,.2+k*.11,z,.17,n+k*1.3+Math.PI,.4); }
-          if (si === 2) [[.1,.6,.05],[-.12,.5,-.08],[.02,.72,-.1]].forEach(f => part(G.sp(),0xffd83a,stages[si],x+f[0],f[1],z+f[2],.035,.035,.035));
-          else {
-            [[.2,.38,.05,0xe0321f],[-.2,.5,.1,0xe0321f],[.05,.3,-.22,0xe0321f],[-.1,.62,-.18,0xe0321f],[.17,.62,.17,0xf08a24]].forEach(f => {
-              part(G.sp(),f[3],stages[si],x+f[0],f[1],z+f[2],.1,.09,.1);
-              part(G.cn(),0x2f8f2f,stages[si],x+f[0],f[1]+.09,z+f[2],.05,.04,.05);
-            });
-          }
-        });
-      });
-    } else if (key === "cassava") {
-      SP4.forEach(([x,z],n) => {
-        stem(stages[0],0x8a6a45,x,0,z,.3,.035); leaf(stages[0],0x6fbf45,x,.3,z,.07,n,1.1);
-        stem(stages[1],0x8f7a4e,x,0,z,.6,.04); palmate(stages[1],x,.6,z,.18,5,0x4fae3f);
-        [2,3].forEach(si => {
-          stem(stages[si],0x8a7a50,x,0,z,1.3,.05);
-          [.3,.6,.9].forEach(h => part(G.sp(),0x6d5a38,stages[si],x,h,z,.065,.025,.065));          // stem nodes
-          palmate(stages[si],x,1.3,z,.34,7); palmate(stages[si],x,.95,z,.26,5,0x4aa545);
-        });
-        for (let k=0;k<3;k++) {
-          const a = n + k*2.1, o = part(G.sp(),0x9c6b3c,stages[3], x+Math.cos(a)*.25,.09,z+Math.sin(a)*.25, .09,.08,.3);
-          o.rotation.y = Math.atan2(Math.cos(a), Math.sin(a));
-        }
-      });
-    } else if (key === "yam") {
-      SP4.forEach(([x,z],n) => {
-        part(G.sp(),0x9c6b3c,stages[0],x,.05,z,.1,.07,.13); stem(stages[0],0x6fbf45,x,.05,z,.15,.02); leaf(stages[0],0x5fbf4a,x,.2,z,.06,n,.6,.8);
-        [1,2,3].forEach(si => {
-          const tall = si === 1 ? 1.0 : 1.7;
-          stem(stages[si],0x9a7b4f,x,0,z,tall,.02);                                                  // stake
-          stem(stages[si],0x4fae3f,x+.03,0,z,tall*.85,.022);                                         // climbing vine
-          const nl = si === 1 ? 4 : 8;
-          for (let k=0;k<nl;k++) leaf(stages[si],si===1?0x5fbf4a:0x3d9a3d,x+.03,.22+k*(tall*.8/nl),z,.12,n+k*2.1,.4,.8);
-        });
-        [[.28,.05,.6],[-.25,-.1,2.2]].forEach((f,k) => {
-          const o = part(G.sp(),0xb5835a,stages[3],x+f[0],.1,z+f[1],.1,.09,k?.34:.42); o.rotation.y = f[2]+n;
-        });
-      });
-    } else if (key === "pepper") {
-      SP4.forEach(([x,z],n) => {
-        stem(stages[0],0x6fbf45,x,0,z,.14,.02);
-        leaf(stages[0],0x7acb4f,x,.13,z,.06,n,.4,.5); leaf(stages[0],0x7acb4f,x,.13,z,.06,n+Math.PI,.4,.5);
-        stem(stages[1],0x5aae3a,x,0,z,.35,.025);
-        for (let k=0;k<6;k++) leaf(stages[1],0x2f9a3a,x,.12+k*.04,z,.13,n+k*1.05,.55,.4);
-        [2,3].forEach(si => {
-          stem(stages[si],0x4a9e34,x,0,z,.7,.035);
-          for (let k=0;k<10;k++) leaf(stages[si],k%2?0x2a8a35:0x35a042,x,.15+k*.055,z,.15,n+k*1.25,.5,.4);
-          if (si === 2) [[.1,.55,.05],[-.12,.45,-.08],[.03,.62,-.12]].forEach(f => part(G.sp(),0xffffff,stages[si],x+f[0],f[1],z+f[2],.03,.03,.03));
-          else [[.15,.45,.05,0xd62b1f],[-.16,.5,.08,0xd62b1f],[.05,.4,-.18,0xe8a21f],[-.1,.58,-.12,0x4aa845],[.12,.6,.14,0xd62b1f],[0,.35,.17,0xd62b1f]].forEach(f => {
-            const c = part(G.cn(),f[3],stages[si],x+f[0],f[1],z+f[2],.045,.22,.045); c.rotation.x = Math.PI;     // hanging chili pods
-          });
-        });
-      });
-    } else if (key === "pumpkin") {
-      SP4.forEach(([x,z],n) => {
-        leaf(stages[0],0x7acb4f,x,.08,z,.07,n,.5,.9); leaf(stages[0],0x7acb4f,x,.08,z,.07,n+Math.PI,.5,.9);
-        for (let k=0;k<5;k++) leaf(stages[1],0x4fae3f,x,.14,z,.16,n+k*1.26,.35,.9);
-        [2,3].forEach(si => {
-          for (let k=0;k<7;k++) {
-            const a = n + k*.9, px = x+Math.cos(a)*.1, pz = z+Math.sin(a)*.1;
-            stem(stages[si],0x5aa23a,px,0,pz,.28,.015);
-            leaf(stages[si],k%2?0x3f9a3a:0x4aa845,px,.28,pz,.2,a,.15,.95);
-          }
-          if (si === 2) [[.2,.22,.1],[-.18,.2,.15]].forEach(f => part(G.sp(),0xffc72c,stages[si],x+f[0],f[1],z+f[2],.05,.05,.05));
-          else { part(G.sp(),0xf08a1f,stages[si],x+.3,.15,z+.25,.2,.16,.2); part(G.cy(),0x6b8a3a,stages[si],x+.3,.32,z+.25,.03,.1,.03); }
-        });
-      });
-    } else if (key === "watermelon") {
-      SP4.forEach(([x,z],n) => {
-        leaf(stages[0],0x7acb4f,x,.08,z,.07,n,.5,.7); leaf(stages[0],0x7acb4f,x,.08,z,.07,n+Math.PI,.5,.7);
-        for (let k=0;k<6;k++) leaf(stages[1],0x4fae3f,x,.12,z,.17,n+k*1.05,.3,.6);
-        [2,3].forEach(si => {
-          for (let k=0;k<8;k++) {
-            const a = n + k*.8, px = x+Math.cos(a)*.12, pz = z+Math.sin(a)*.12;
-            stem(stages[si],0x5aa23a,px,0,pz,.2,.012);
-            leaf(stages[si],k%2?0x3a8f45:0x46a050,px,.2,pz,.22,a,.12,.6);
-          }
-          if (si === 2) part(G.sp(),0xffd83a,stages[si],x+.2,.2,z+.1,.045,.045,.045);
-          else {
-            const fx = x+.28, fz = z+.2;
-            part(G.sp(),0x3a9a48,stages[si],fx,.22,fz,.26,.22,.32);                                         // the fruit
-            [[0,.265,.325],[-.1,.24,.3],[.1,.24,.3]].forEach(b => part(G.sp(),0x1f6a2b,stages[si],fx,.22+b[0],fz,b[1],.05,b[2]));   // dark stripes
-          }
-        });
-      });
-    } else {
-      SP4.forEach(([x,z],n) => {
-        stem(stages[0],0x6fbf45,x,0,z,.1,.04);
-        for (let k=0;k<4;k++) leaf(stages[0],0x5aae6a,x,.1,z,.09,n+k*1.57,1.0,.15);
-        for (let k=0;k<8;k++) leaf(stages[1],0x4a9a5a,x,.12,z,.25,n+k*.785,.9-(k%2)*.3,.13);
-        [2,3].forEach(si => { for (let k=0;k<12;k++) leaf(stages[si],k%2?0x3f8f55:0x4aa062,x,.14,z,.4,n+k*.52,.75-(k%3)*.18,.12); });
-        part(G.sp(),0x7fb043,stages[2],x,.32,z,.1,.14,.1);                                                    // young green fruit
-        part(G.sp(),0xe3a82a,stages[3],x,.38,z,.17,.24,.17);                                                  // golden fruit
-        [-.14,-.05,.05,.14].forEach(dy => { const r = .17*Math.sqrt(1-(dy/.24)*(dy/.24))*1.04; part(G.sp(),0xb87a1a,stages[3],x,.38+dy,z,r,.03,r); });
-        for (let k=0;k<7;k++) leaf(stages[3],0x3f9a50,x,.6,z,.14,k*.9,1.2,.15);                               // leafy crown
-      });
-    }
-    return { root, stages, key };
-  }
-
-  const ring = new THREE.Mesh(new THREE.RingGeometry(1.75,2.0,4,1,Math.PI/4), new THREE.MeshBasicMaterial({ color:0xffffff, transparent:true, opacity:.9, side:THREE.DoubleSide }));
-  ring.rotation.x = -Math.PI/2; ring.position.y = .06; ring.visible = false; scene.add(ring);
-
-  for (let i=0;i<MAX_PLOTS;i++){
-    const col = i%4, row = 2 - Math.floor(i/4);
-    const g = new THREE.Group(); g.position.set((col-1.5)*3.3, 0, (row-1)*3.3+1); g.userData.plotIndex = i;
-    const dirt = new THREE.Group(); g.add(dirt);
-    box(2.7,.26,2.7,0x6b4423,0,.13,0,dirt);
-    [-.7,0,.7].forEach(z => box(2.3,.07,.3,0x573619,0,.29,z,dirt));
-    box(2.9,.34,.12,0x9a6a35,0,.17,1.4,dirt); box(2.9,.34,.12,0x9a6a35,0,.17,-1.4,dirt);
-    box(.12,.34,2.7,0x9a6a35,1.4,.17,0,dirt); box(.12,.34,2.7,0x9a6a35,-1.4,.17,0,dirt);
-    const locked = new THREE.Group(); g.add(locked);
-    box(2.7,.1,2.7,0x5da23c,0,.05,0,locked);
-    cyl(.07,.07,1.1,0x8b5a2b,0,.55,0,locked,6); box(.8,.5,.1,0xc99a5b,0,1.05,0,locked);
-    box(.28,.22,.06,0xffc83d,0,1.02,.07,locked); const sh = new THREE.Mesh(new THREE.TorusGeometry(.09,.025,6,10,Math.PI), M(0xffc83d)); sh.position.set(0,1.18,.07); locked.add(sh);
-    const marker = cone(.22,.5,0xffc83d,0,2.7,0,g,6); marker.rotation.x = Math.PI; marker.visible = false; marker.castShadow = false;
-    g.userData.dirt = dirt; g.userData.locked = locked; g.userData.marker = marker; g.userData.crop = null;
-    scene.add(g); plotGroups.push(g);
-  }
-
-  function syncPlots(t){
-    plotGroups.forEach((g,i) => {
-      const st = plotState(i), u = g.userData;
-      u.dirt.visible = st.kind !== "locked"; u.locked.visible = st.kind === "locked";
-      const want = st.p ? st.p.key : null;
-      if (u.crop && u.crop.key !== want) { g.remove(u.crop.root); u.crop = null; }
-      if (want && !u.crop) { u.crop = buildCrop(want); u.crop.root.position.y = .27; g.add(u.crop.root); }
-      if (u.crop) {
-        const c = CROPS[want], p = st.kind==="ready" ? 1 : st.frac;
-        const stg = st.kind === "ready" ? 3 : p < .25 ? 0 : p < .55 ? 1 : 2;           // sprout → young → grown → ripe
-        const lo = [0,.25,.55][Math.min(stg,2)], hi = [.25,.55,1][Math.min(stg,2)];
-        const k = stg === 3 ? 1 : (p-lo)/(hi-lo);
-        u.crop.stages.forEach((s,idx) => { s.visible = idx === stg; });
-        u.crop.stages[stg].scale.set(1, .8 + .2*k, 1);                                 // rises a little inside each stage
-        u.crop.root.rotation.z = st.kind === "thirsty" ? .14 : Math.sin(t*1.6 + i)*.02;     // wilts when dry
-      }
-      const alertOn = st.kind === "ready" || st.kind === "thirsty";                      // gold = harvest, blue = needs water
-      u.marker.visible = alertOn;
-      if (alertOn) { u.marker.material.color.setHex(st.kind === "ready" ? 0xffc83d : 0x4fc3f7); u.marker.position.y = 2.6 + Math.sin(t*3+i)*.18; u.marker.rotation.y = t*2; }
-    });
-    ring.visible = sel >= 0;
-    if (sel >= 0) { const g = plotGroups[sel]; ring.position.x = g.position.x; ring.position.z = g.position.z; ring.material.opacity = .65 + Math.sin(t*5)*.25; }
-  }
-
-  /* ---------- CAMERA CONTROLS ---------- */
-  let theta = 0, phi = .98, radius = 19.5; const target = new THREE.Vector3(0,0,1);
-  const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
-  function updateCam(){
-    const sp = Math.sin(phi);
-    camera.position.set(target.x + radius*sp*Math.sin(theta), target.y + radius*Math.cos(phi), target.z + radius*sp*Math.cos(theta));
-    camera.lookAt(target);
-  }
-  const ptrs = new Map(); let moved = 0, downT = 0, pinchD = 0;
-  const pdist = () => { const a=[...ptrs.values()]; return Math.hypot(a[0].x-a[1].x, a[0].y-a[1].y); };
-  cv.addEventListener("pointerdown", e => { ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY}); try{cv.setPointerCapture(e.pointerId);}catch(_){} moved = 0; downT = performance.now(); if (ptrs.size===2) pinchD = pdist(); });
-  cv.addEventListener("pointermove", e => {
-    const p = ptrs.get(e.pointerId); if (!p) return;
-    const dx = e.clientX-p.x, dy = e.clientY-p.y; p.x = e.clientX; p.y = e.clientY;
-    if (ptrs.size === 1) { theta -= dx*.006; phi = clamp(phi - dy*.004, .5, 1.3); moved += Math.abs(dx)+Math.abs(dy); }
-    else if (ptrs.size === 2) { const d = pdist(); if (pinchD) radius = clamp(radius * pinchD/d, 11, 30); pinchD = d; moved += 20; }
-    updateCam();
-  });
-  const up = e => {
-    const wasOne = ptrs.size === 1;
-    if (ptrs.has(e.pointerId)) {
-      ptrs.delete(e.pointerId);
-      if (wasOne && moved < 10 && performance.now()-downT < 600 && e.type === "pointerup") pick(e.clientX, e.clientY);
-    }
-    pinchD = 0;
-  };
-  cv.addEventListener("pointerup", up); cv.addEventListener("pointercancel", up);
-  cv.addEventListener("wheel", e => { e.preventDefault(); radius = clamp(radius + e.deltaY*.012, 11, 30); updateCam(); }, { passive:false });
-
-  const ray = new THREE.Raycaster(), mouse = new THREE.Vector2();
-  function pick(x,y){
-    mouse.set(x/innerWidth*2-1, -(y/innerHeight)*2+1); ray.setFromCamera(mouse, camera);
-    const hits = ray.intersectObjects(plotGroups, true);
-    for (const h of hits) { let o = h.object; while (o && o.userData.plotIndex === undefined) o = o.parent; if (o) { sfx.tap(); select(o.userData.plotIndex); return; } }
-    if (sel >= 0) { sfx.tap(); select(-1); }
-  }
-
-  addEventListener("resize", () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth/innerHeight; camera.updateProjectionMatrix(); });
-  updateCam();
-
-  const clock = new THREE.Clock();
-  (function frame(){
-    requestAnimationFrame(frame);
-    const dt = clock.getDelta(), t = clock.elapsedTime;
-    blades.rotation.z -= dt*1.1;
-    clouds.forEach(c => { c.position.x += dt*.7; if (c.position.x > 50) c.position.x = -50; });
-    syncPlots(t);
-    renderer.render(scene, camera);
-  })();
-} catch (err) {
-  console.error(err); $("err").style.display = "flex";
-}
-
-render();
-setInterval(() => renderPanel(false), 500);
+});
 </script>
+
 </body>
 </html>
