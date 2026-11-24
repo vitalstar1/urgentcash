@@ -469,7 +469,7 @@ function openWallet(){ $("wallet").classList.remove("hidden"); render(); }
 function closeWallet(){ $("wallet").classList.add("hidden"); }
 
 /* ---------- VERIFIED-ONLY: CHAT ---------- */
-let adminVerified = false;                                   // set from the cloud doc field "verified" (only you can set it, in the Firebase console)
+let adminVerified = false;                                   // set from the verifications/{uid} document (a verifications/{uid} document, created by you after payment is confirmed)
 const isVerified = () => !!(user && adminVerified);
 /* ---------- UI RENDER ---------- */
 function renderPanel(force){
@@ -685,7 +685,7 @@ if (!auth) {
     const cloud = snap.exists && snap.data().state ? snap.data() : null;
     if (cloud) S = migrate(Object.assign(fresh(), cloud.state));
     else if (!cached) S = load(GUEST_KEY) || S || fresh();   // first sign-in: keep this device's guest farm
-    adminVerified = !!(cloud && cloud.verified === true);
+    try { adminVerified = (await db.collection("verifications").doc(u.uid).get()).exists; } catch(e) { adminVerified = false; }
     lastDailyAt = cloud && cloud.dailyAt ? cloud.dailyAt.toMillis() : 0;
     synced = true;
   } else {
