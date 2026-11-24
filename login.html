@@ -412,7 +412,7 @@ form.addEventListener("submit",async event=>{
     await signInWithEmailAndPassword(auth,email,password);
 
     showMessage("Signed in successfully. Redirecting…","success");
-    window.location.replace("dashboard.html");
+    window.location.replace("home.html");
 
   }catch(error){
     showMessage(friendlyError(error.code));
