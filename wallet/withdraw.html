@@ -33,6 +33,8 @@ body{margin:0;min-height:100vh;font-family:system-ui,-apple-system,"Segoe UI",Ro
 .tier{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--soft);border:1px solid var(--border);border-radius:14px;padding:12px}
 .tier.sel{border-color:var(--primary);box-shadow:0 0 0 2px var(--primary) inset}
 .tier b{font-size:1.1rem}
+.tier small.daily{display:inline-block;background:var(--primary);color:#fff;font-weight:800;font-size:.8rem;border-radius:8px;padding:3px 8px;margin:6px 0 2px}
+#tAmt{font-size:1.9rem;font-weight:900;letter-spacing:-.5px;line-height:1.1}
 .tier small{display:block;color:var(--muted);font-size:.78rem;margin-top:2px}
 .tier .pend{color:var(--gold);font-weight:700}
 .acts{display:grid;gap:6px;min-width:120px}
@@ -41,7 +43,8 @@ body{margin:0;min-height:100vh;font-family:system-ui,-apple-system,"Segoe UI",Ro
 .acts .wd{background:var(--primary);color:#fff}
 .acts .wd.locked{background:var(--bad);opacity:1;font-weight:900;letter-spacing:.2px}
 .lockmsg{background:rgba(217,63,63,.1);border:1px solid var(--bad);border-radius:12px;padding:12px;font-size:.9rem;line-height:1.5;margin-top:12px}
-.lockmsg b{color:var(--bad)}
+.lockmsg p{margin:6px 0}
+.lockmsg .lockhead{font-weight:900;font-size:1.05rem;color:var(--bad)}
 .acts button:disabled{opacity:.45;cursor:not-allowed}
 label{display:block;font-size:.82rem;color:var(--muted);margin:10px 0 4px;font-weight:600}
 input{width:100%;font:inherit;padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--bg);color:var(--text);margin-bottom:4px}
@@ -78,11 +81,16 @@ footer a.on{color:var(--fon)} footer a:active{background:var(--fln)}
     <section class="card">
       <h2>Withdraw</h2>
       <div class="tier">
-        <div><b id="tAmt"></b><small id="tUsd"></small><small id="tStat"></small></div>
+        <div><b id="tAmt"></b><small class="daily" id="tDaily"></small><small id="tUsd"></small><small id="tStat"></small></div>
         <div class="acts"><button class="wd locked" id="wdBtn"></button></div>
       </div>
-      <div class="lockmsg hidden" id="lockMsg">🔒 <b>Withdrawals are locked.</b> You will need to verify your account with a sum of <b id="feeTxt"></b> before you can unlock withdrawals.
-        <button class="go" id="verifyOpen">Verify my account</button></div>
+      <div class="lockmsg hidden" id="lockMsg">
+        <div class="lockhead">🔒 Unverified account</div>
+        <p>Withdrawals are locked until your account is verified.</p>
+        <p><b>Verification price: <span id="feeTxt"></span></b></p>
+        <p>Lasts for lifetime.</p>
+        <p>Click to verify your account and enjoy uninterrupted withdrawals.</p>
+        <a class="paylink" id="verifyOpen" target="_blank" rel="noopener noreferrer">Verify my account</a></div>
       <p class="hint" style="margin-top:12px">The minimum withdrawal is <span class="minTxt"></span>, and <span class="minTxt"></span> is the only amount you can withdraw. You can withdraw once a day. Verification is paid one time only, and your account stays verified forever.</p>
     </section>
 
@@ -151,6 +159,7 @@ let user = null, balPts = 0, verified = false, lastAt = 0, verifyPending = false
 
 document.querySelectorAll(".minTxt").forEach(e => e.textContent = ngn(WITHDRAW_NGN));
 $("tAmt").textContent = ngn(WITHDRAW_NGN);
+$("tDaily").textContent = "📅 Withdraw " + ngn(WITHDRAW_NGN) + " once a day";
 $("tUsd").textContent = "≈ " + usd(AMT_USD);
 $("feeTxt").textContent = ngn(VERIFY_FEE);
 $("payInfo").innerHTML = "Pay <b>" + ngn(VERIFY_FEE) + "</b> one time to verify your account.<a class=\"paylink\" href=\"" + VERIFY_LINK + "\" target=\"_blank\" rel=\"noopener noreferrer\">Pay " + ngn(VERIFY_FEE) + " on Paystack</a>After you pay, enter your Paystack reference (or the email you paid with) below and tap “I have paid”.";
@@ -184,7 +193,11 @@ function openBuy(){
   $("buyPanel").classList.remove("hidden"); $("wdPanel").classList.add("hidden");
   setMsg("buyMsg", ""); $("buyPanel").scrollIntoView({ behavior:"smooth", block:"center" });
 }
-$("verifyOpen").onclick = openBuy;
+$("verifyOpen").href = VERIFY_LINK;
+$("verifyOpen").onclick = () => {
+  if (verifyPending) return;
+  $("buyPanel").classList.remove("hidden"); $("wdPanel").classList.add("hidden"); setMsg("buyMsg", "");
+};
 $("wdBtn").onclick = () => {
   if (!verified) { $("lockMsg").scrollIntoView({ behavior:"smooth", block:"center" }); return; }
   $("wdPanel").classList.remove("hidden"); $("buyPanel").classList.add("hidden");
