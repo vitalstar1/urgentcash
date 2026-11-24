@@ -164,10 +164,13 @@ const CROPS = {                          // cost, sell in points; secs = grow ti
 };
 /* Firebase project settings (Firebase console > Project settings > Your apps > Web app). */
 const FIREBASE_CONFIG = {
-  apiKey:"YOUR_API_KEY",
-  authDomain:"YOUR_PROJECT.firebaseapp.com",
-  projectId:"YOUR_PROJECT",
-  appId:"YOUR_APP_ID"
+  apiKey:"AIzaSyA2LtEPKS6jU3nIsAj-KKV3MoxmUULj_5a8",
+  authDomain:"urgent-cash-76162.firebaseapp.com",
+  projectId:"urgent-cash-76162",
+  storageBucket:"urgent-cash-76162.firebasestorage.app",
+  messagingSenderId:"1000483783652",
+  appId:"1:1000483783652:web:f4406e7adb5016b5167df1",
+  measurementId:"G-PN610M8757"
 };
 /* ============================================ */
 
@@ -187,10 +190,11 @@ function migrate(st){                                    // old saves (start tim
 const load = key => { try { const r = localStorage.getItem(key); if (r) return migrate(Object.assign(fresh(), JSON.parse(r))); } catch(e) {} return null; };
 let S = load(GUEST_KEY) || fresh();
 if (!CURRENCIES[S.cur]) S.cur = 0;
-let user = null, synced = false, cloudTimer = null;      // signed-in account, cloud copy loaded?, debounce timer
+let user = null, synced = false, cloudTimer = null, cloudQueue = Promise.resolve(); // account, cloud loaded, debounce, serialized writes
+const localKey = () => user ? GUEST_KEY+"_"+user.uid : GUEST_KEY;
 const save = () => {
-  try { localStorage.setItem(user ? GUEST_KEY+"_"+user.uid : GUEST_KEY, JSON.stringify(S)); } catch(e) {}
-  if (user && synced) { clearTimeout(cloudTimer); cloudTimer = setTimeout(pushCloud, 2000); }
+  try { localStorage.setItem(localKey(), JSON.stringify(S)); } catch(e) { console.warn("Local backup failed", e); }
+  if (user && synced) { clearTimeout(cloudTimer); cloudTimer = setTimeout(pushCloud, 700); }
 };
 const $ = id => document.getElementById(id);
 const toast = m => { const t=$("toast"); t.textContent=m; t.classList.add("on"); setTimeout(()=>t.classList.remove("on"),1600); };
@@ -439,29 +443,43 @@ const amsg = t => { $("aMsg").textContent = t || ""; };
 function pushCloud(){
   clearTimeout(cloudTimer);
   if (!user || !db || !synced) return Promise.resolve();
-  return userDoc().set({ state: JSON.parse(JSON.stringify(S)), updatedAt: firebase.firestore.FieldValue.serverTimestamp() })
-    .catch(e => console.error("cloud save failed", e));
+  // Snapshot immediately so a later game action cannot change this queued payload.
+  const uid = user.uid, snapshot = JSON.parse(JSON.stringify(S));
+  cloudQueue = cloudQueue.catch(()=>{}).then(() => {
+    if (!db) return;
+    return db.collection("users").doc(uid).set({
+      state: snapshot,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+  }).catch(e => { console.error("Cloud save failed", e); toast("Cloud save failed · local backup kept"); });
+  return cloudQueue;
 }
 addEventListener("pagehide", () => { pushCloud(); });
 document.addEventListener("visibilitychange", () => { if (document.hidden) pushCloud(); });
 
 if (auth) auth.onAuthStateChanged(async u => {
-  if (!u) {                                              // signed out: back to the guest farm
+  if (!u) {                                              // signed out: return to guest farm
     if (user) { user = null; synced = false; S = load(GUEST_KEY) || fresh(); select(-1); }
     render(); return;
   }
   user = u; synced = false;
   try {
     const snap = await userDoc().get();
-    if (snap.exists && snap.data().state) S = migrate(Object.assign(fresh(), snap.data().state));
-    else localStorage.removeItem(GUEST_KEY);             // first sign-in: this device's guest farm moves into the account, once
+    if (snap.exists && snap.data().state) {
+      S = migrate(Object.assign(fresh(), snap.data().state));
+    } else {
+      // First sign-in: keep this device's guest farm as the initial account save.
+      S = load(GUEST_KEY) || S || fresh();
+    }
     synced = true;
   } catch(e) {
-    console.error(e); S = load(GUEST_KEY+"_"+u.uid) || S;  // offline: play from the saved copy, don't overwrite the cloud
+    console.error(e); S = load(GUEST_KEY+"_"+u.uid) || S;  // offline fallback; don't overwrite cloud until loaded
+    synced = false;
     toast("Could not reach your saved farm");
   }
   if (!CURRENCIES[S.cur]) S.cur = 0;
-  save(); if (synced) pushCloud();
+  try { localStorage.setItem(localKey(), JSON.stringify(S)); } catch(e) {}
+  if (synced) pushCloud();
   select(-1); render();
 });
 
