@@ -55,6 +55,7 @@
   @media (prefers-color-scheme:dark) { footer { --fbg:#1f1f1f; --ftx:#c9c9c9; --fln:rgba(255,255,255,.1); --fon:#2ee59d; } }
   footer .fb { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; padding:9px 4px 8px; border:0; border-radius:0; background:transparent; color:var(--ftx); text-decoration:none; font-size:.75rem; font-weight:500; cursor:pointer; }
   footer .fb span { font-size:1.4rem; line-height:1; }
+  @media (max-width:480px) { footer .fb { font-size:.62rem; padding:8px 2px 7px; white-space:nowrap; } footer .fb span { font-size:1.2rem; } }
   footer .fb.on { color:var(--fon); }
   footer .fb:active { background:var(--fln); }
   .hidden { display:none !important; }
@@ -108,7 +109,11 @@
 
 <footer>
   <a class="fb on" href="#" onclick="closePanel();return false"><span>🏠</span>Home</a>
-  <a class="fb" href="wallet"><span>💼</span>Wallet</a>
+  <a class="fb" href="wallet.html"><span>💼</span>Wallet</a>
+  <a class="fb" href="#" onclick="openWorker();return false"><span>🧑‍🌾</span>Worker</a>
+  <a class="fb hidden" id="chatLink" href="#" target="_blank" rel="noopener"><span>💬</span>Chat</a>
+  <a class="fb" href="verify.html"><span>✅</span>Status</a>
+  <a class="fb" href="stats.html"><span>📊</span>Site Stats</a>
   <a class="fb" href="profile.html"><span>👤</span>Profile</a>
 </footer>
 
@@ -129,6 +134,27 @@
     <button class="alt full" disabled>Withdraw (not live yet)</button>
     <button class="alt full" onclick="closeWallet()">Close</button>
     <p class="note">This is a game balance. Withdrawals need sign-in, identity checks and a payment backend, which this front-end file does not include. Exchange rates are fixed numbers in CONFIG, not live rates.</p>
+  </div>
+</div>
+
+<div id="worker" class="modal hidden">
+  <div class="box">
+    <h3 style="margin-bottom:6px">🧑‍🌾 Farm Worker</h3>
+    <p class="sub">A worker waters your crops, harvests them and replants the same crop automatically for <span id="wkDays"></span> days.</p>
+    <div class="row"><span>Status</span><b id="wkStatus">Not hired</b></div>
+    <div class="row"><span>Price</span><b id="wkPrice"></b></div>
+    <p class="msg" id="wkMsg"></p>
+    <button class="gold full" id="wkHire" onclick="hireWorker()">Hire worker</button>
+    <div id="wkVerify" class="hidden">
+      <div class="row"><span>Verification deposit</span><b id="wkDep"></b></div>
+      <p class="note" id="wkPay"></p>
+      <p class="note">Use this ID as your payment reference: <b id="wkId" style="word-break:break-all"></b></p>
+      <button class="full" onclick="copyId()">Copy my ID</button>
+      <a class="btn gold full" href="verify.html" style="display:block;text-align:center;text-decoration:none;margin-top:6px;padding:10px 12px;border-radius:10px;font-weight:700;font-size:.9rem">Open verification page</a>
+      <button class="alt full" onclick="recheckVerified()">I have paid, check again</button>
+    </div>
+    <button class="alt full" onclick="closeWorker()">Close</button>
+    <p class="note">Only verified accounts (verified by deposit) can hire a worker or see the community chat. The worker only works while the farm page is open.</p>
   </div>
 </div>
 
@@ -181,6 +207,11 @@ const WATER_MIN_SECS = 20;               // ...but never less than this many sec
 const FERT_SPEED = 1.5;                  // fertilized crops grow this much faster (while watered)
 const FERT_COST = c => Math.max(2, Math.ceil(c.cost * 0.6));   // points per fertilizer (c = crop)
 const HARVEST_BOOST = 1.5;               // optional ad booster multiplies one harvest's payout
+const WORKER_COST_USD = 50;              // hiring a worker (verified accounts only)
+const WORKER_DAYS = 7;                   // one hire lasts this many days
+const VERIFY_DEPOSIT_NGN = 5800;         // one-time deposit to get a verified account
+const PAY_DETAILS = "Add your payment details here (bank name, account number, account name).";
+const CHAT_LINK = "https://chat.whatsapp.com/YOUR_LINK_HERE";   // community chat, shown to verified accounts only
 const CROPS = {                          // cost, sell in points; secs = grow time
   corn:       { name:"Corn",       em:"🌽", seed:0,    cost:5,   sell:15,   secs:120   },   // free starter crop
   tomato:     { name:"Tomato",     em:"🍅", seed:20,   cost:15,  sell:50,   secs:300   },   // seed = one-time price to unlock the crop
@@ -204,9 +235,22 @@ const FIREBASE_CONFIG = {
 /* ============================================ */
 
 /* ---------- STATE ---------- */
-const S0 = { pts:20, plots:Array(START_PLOTS).fill(null), seeds:["corn"], ads:0, harv:0, daily:"", cur:0, mute:false };
+const S0 = { pts:20, plots:Array(START_PLOTS).fill(null), seeds:["corn"], ads:0, harv:0, daily:"", cur:0, mute:false, worker:{until:0}, last:[] };
 const GUEST_KEY = "urgentcash_farm3";
 const fresh = () => JSON.parse(JSON.stringify(S0));
+function sanitize(st){                                   // clamp tampered or corrupt saves to sane values
+  const num = (v,d,max) => (typeof v === "number" && isFinite(v)) ? Math.max(0, Math.min(max, v)) : d;
+  st.pts = num(st.pts, 0, 1e9); st.ads = Math.floor(num(st.ads, 0, 1e7)); st.harv = Math.floor(num(st.harv, 0, 1e7));
+  st.cur = CURRENCIES[st.cur] ? st.cur : 0; st.mute = !!st.mute; st.daily = typeof st.daily === "string" ? st.daily : "";
+  st.seeds = Array.isArray(st.seeds) ? [...new Set(st.seeds.filter(k => CROPS[k]))] : ["corn"];
+  if (!st.seeds.includes("corn")) st.seeds.unshift("corn");
+  st.worker = { until: num(st.worker && st.worker.until, 0, 8.64e15) };
+  st.last = Array.isArray(st.last) ? st.last.slice(0, MAX_PLOTS).map(k => CROPS[k] ? k : null) : [];
+  st.plots = Array.isArray(st.plots) ? st.plots.slice(0, MAX_PLOTS) : [];
+  while (st.plots.length < START_PLOTS) st.plots.push(null);
+  st.plots = st.plots.map(p => (p && CROPS[p.key]) ? p : null);
+  return st;
+}
 function migrate(st){                                    // old saves (start time only) -> watering model
   const now = Date.now();
   st.plots = (st.plots || []).map(p => {
@@ -214,7 +258,7 @@ function migrate(st){                                    // old saves (start tim
     const tot = CROPS[p.key].secs*1000, g = Math.max(0, Math.min(tot, now - p.at));
     return { key:p.key, grown:g, t:now, wetUntil:now + (tot-g), fert:false, boosted:!!p.boosted, hboost:false };
   });
-  return st;
+  return sanitize(st);
 }
 const load = key => { try { const r = localStorage.getItem(key); if (r) return migrate(Object.assign(fresh(), JSON.parse(r))); } catch(e) {} return null; };
 let S = load(GUEST_KEY) || fresh();
@@ -320,14 +364,17 @@ const AD_PAGE = "vsadd.html";
 const AD_KEY = "urgentcash_pendingad";
 function showAd(action, plot){
   save();                                                    // keep the farm safe before leaving
-  try { localStorage.setItem(AD_KEY, JSON.stringify({ action, plot, t:Date.now(), ret:location.href })); } catch(e) {}
+  try { localStorage.setItem(AD_KEY, JSON.stringify({ action, plot, t:Date.now(), ret:location.href, nonce:Math.random().toString(36).slice(2)+Date.now().toString(36) })); } catch(e) {}
   window.location.href = AD_PAGE + "?return=" + encodeURIComponent(location.href);
 }
 /* Called once the farm has loaded: if we just came back from vsadd.html, hand out the reward. */
 function claimAdReward(){
   let ad = null;
   try { ad = JSON.parse(localStorage.getItem(AD_KEY) || "null"); localStorage.removeItem(AD_KEY); } catch(e) {}
-  if (!ad || Date.now() - ad.t > 30*60*1000) return;         // nothing pending, or too old
+  if (!ad || !ad.nonce || Date.now() - ad.t > 30*60*1000) return;   // nothing pending, or too old
+  if (Date.now() - ad.t < AD_SECONDS*1000) return;           // came back too fast to have watched an ad
+  if (S.lastAdNonce === ad.nonce) return;                    // each ad ticket pays out once
+  S.lastAdNonce = ad.nonce;
   const p = S.plots[ad.plot];
   if (!p) return;
   if (ad.action === "boostPlot" && !p.boosted) { settle(p); p.grown += (totalMs(p) - p.grown)/2; p.boosted = true; toast("Grow time halved"); }
@@ -448,6 +495,62 @@ function closePanel(){ select(-1); }
 function openWallet(){ $("wallet").classList.remove("hidden"); render(); }
 function closeWallet(){ $("wallet").classList.add("hidden"); }
 
+/* ---------- VERIFIED-ONLY: WORKER + CHAT ---------- */
+let adminVerified = false;                                   // set from the cloud doc field "verified" (only you can set it, in the Firebase console)
+const isVerified = () => !!(user && adminVerified);
+const workerLeft = () => Math.max(0, S.worker.until - Date.now());
+function workerTick(){
+  if (!workerLeft()) return;
+  let changed = false;
+  S.plots.forEach((p,i) => {
+    if (p && prog(p) >= totalMs(p)) {                           // harvest
+      S.pts += payout(p); S.harv++; S.last[i] = p.key; S.plots[i] = null; changed = true;
+    }
+    if (!S.plots[i] && S.last[i] && S.seeds.includes(S.last[i]) && S.pts >= CROPS[S.last[i]].cost) {   // replant same crop
+      const key = S.last[i]; S.pts -= CROPS[key].cost;
+      S.plots[i] = { key, grown:0, t:Date.now(), wetUntil:0, fert:false, boosted:false, hboost:false }; changed = true;
+    }
+    const q = S.plots[i];
+    if (q && q.wetUntil - Date.now() < 5000 && water(i, true)) changed = true;   // water before it runs dry
+  });
+  if (changed) { save(); render(); }
+}
+setInterval(workerTick, 4000);
+function openWorker(){ $("worker").classList.remove("hidden"); renderWorker(); }
+function closeWorker(){ $("worker").classList.add("hidden"); }
+function wkMsg(t){ $("wkMsg").textContent = t || ""; }
+function renderWorker(){
+  $("wkDays").textContent = WORKER_DAYS;
+  $("wkPrice").textContent = "$" + WORKER_COST_USD + " (" + money(WORKER_COST_USD*POINTS_PER_USD) + ")";
+  const left = workerLeft();
+  $("wkStatus").textContent = left ? "Working · " + (left >= 864e5 ? Math.floor(left/864e5) + "d " : "") + fmt(left % 864e5 || left) + " left" : "Not hired";
+  $("wkHire").textContent = left ? "Extend by " + WORKER_DAYS + " days" : "Hire for " + WORKER_DAYS + " days";
+  const v = isVerified();
+  $("wkHire").classList.toggle("hidden", !v); $("wkVerify").classList.toggle("hidden", v);
+  $("wkDep").textContent = "₦" + VERIFY_DEPOSIT_NGN.toLocaleString("en-NG");
+  $("wkPay").textContent = PAY_DETAILS; $("wkId").textContent = user ? user.uid : "";
+  if (!v) wkMsg(user ? "Verify your account to hire a worker. Verification is confirmed after your deposit is received." : "Sign in to hire a worker.");
+}
+function hireWorker(){
+  if (!isVerified()) { sfx.error(); return wkMsg("Only verified accounts can hire a worker."); }
+  const cost = WORKER_COST_USD * POINTS_PER_USD;
+  if (S.pts < cost) { sfx.error(); return wkMsg("Not enough balance. You need " + money(cost) + "."); }
+  S.pts -= cost; S.worker.until = Math.max(Date.now(), S.worker.until) + WORKER_DAYS*864e5;
+  sfx.unlock(); wkMsg(""); toast("Worker hired for " + WORKER_DAYS + " days"); save(); render(); renderWorker();
+}
+async function copyId(){
+  try { await navigator.clipboard.writeText(user.uid); toast("ID copied"); } catch(e) { wkMsg("Copy failed. Select the ID above and copy it."); }
+}
+async function recheckVerified(){
+  if (!user || !db) return wkMsg("Go online and sign in first.");
+  try {
+    const d = (await userDoc().get()).data();
+    adminVerified = !!(d && d.verified === true);
+    if (adminVerified) toast("Account verified"); else wkMsg("Not verified yet. Deposits are confirmed manually, please check back soon.");
+  } catch(e) { wkMsg("Could not check. Check your connection."); }
+  render(); renderWorker();
+}
+
 /* ---------- UI RENDER ---------- */
 function renderPanel(force){
   const el = $("panel");
@@ -504,6 +607,9 @@ function render(){
   $("wNgn").textContent = money(S.pts, CURRENCIES.length>1 ? 1 : 0);
   $("wPlots").textContent = S.plots.length; $("wAds").textContent = S.ads; $("wHarv").textContent = S.harv;
   updateDailyBtn();
+  const cl = $("chatLink"); cl.classList.toggle("hidden", !isVerified() || !CHAT_LINK);
+  if (isVerified()) cl.href = CHAT_LINK;
+  if (!$("worker").classList.contains("hidden")) renderWorker();
   renderPanel(false);
 }
 
@@ -586,7 +692,7 @@ function gateReport(code, reason){
 }
 
 function goLogin(reason, code){
-  gated = true; user = null; synced = false;
+  gated = true; user = null; synced = false; adminVerified = false;
   if (DEBUG_GATE) { gateReport(code || "no-user", reason); return; }
   // Loop guard: if we keep bouncing between pages, stop and show the in-page sign-in instead.
   let n = 0;
@@ -626,7 +732,7 @@ if (!auth) {
     if (await confirmSignedOut()) goLogin("Firebase reports nobody signed in on this origin", "no-user");
     return;
   }
-  user = u; synced = false;
+  user = u; synced = false; adminVerified = false;
   let rejected = false, revealed = false;
   const fsP = loadFirestore();                    // start downloading Firestore right away
   const reveal = () => {
@@ -661,6 +767,7 @@ if (!auth) {
     const cloud = snap.exists && snap.data().state ? snap.data() : null;
     if (cloud) S = migrate(Object.assign(fresh(), cloud.state));
     else if (!cached) S = load(GUEST_KEY) || S || fresh();   // first sign-in: keep this device's guest farm
+    adminVerified = !!(cloud && cloud.verified === true);
     lastDailyAt = cloud && cloud.dailyAt ? cloud.dailyAt.toMillis() : 0;
     synced = true;
   } else {
@@ -721,7 +828,8 @@ try {
   if (typeof THREE === "undefined") throw new Error("three missing");
   const cv = $("c");
   const renderer = new THREE.WebGLRenderer({ canvas:cv, antialias:true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
+  const LOWEND = (navigator.hardwareConcurrency||4) <= 4 || innerWidth < 600;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, LOWEND ? 1.5 : 2));
   renderer.setSize(innerWidth, innerHeight);
   renderer.outputEncoding = THREE.sRGBEncoding;
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -733,7 +841,7 @@ try {
 
   scene.add(new THREE.HemisphereLight(0xffffff, 0x4a7a2a, .75));
   const sun = new THREE.DirectionalLight(0xfff2d0, .95);
-  sun.position.set(12, 22, 10); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+  sun.position.set(12, 22, 10); sun.castShadow = true; sun.shadow.mapSize.set(LOWEND ? 1024 : 2048, LOWEND ? 1024 : 2048);
   Object.assign(sun.shadow.camera, { left:-24, right:24, top:24, bottom:-24, near:.5, far:70 });
   scene.add(sun);
 
@@ -1033,7 +1141,8 @@ try {
   const clock = new THREE.Clock();
   (function frame(){
     requestAnimationFrame(frame);
-    const dt = clock.getDelta(), t = clock.elapsedTime;
+    if (document.hidden) { clock.getDelta(); return; }       // don't burn battery in a background tab
+    const dt = Math.min(clock.getDelta(), .1), t = clock.elapsedTime;
     blades.rotation.z -= dt*1.1;
     clouds.forEach(c => { c.position.x += dt*.7; if (c.position.x > 50) c.position.x = -50; });
     syncPlots(t);
