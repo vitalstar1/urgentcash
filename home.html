@@ -47,15 +47,15 @@
     #toast { top:96px; }
   }
   button:disabled { opacity:.4; cursor:not-allowed; }
-  #hint { position:fixed; bottom:calc(66px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%); background:rgba(10,20,15,.7); padding:8px 14px; border-radius:20px; font-size:.8rem; color:#fff; z-index:4; white-space:nowrap; pointer-events:none; }
-  #panel { position:fixed; bottom:calc(62px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%); width:min(430px,94%); background:var(--card); border:1px solid var(--line); border-radius:16px; padding:14px; z-index:8; backdrop-filter:blur(6px); max-height:52vh; overflow-y:auto; }
+  #hint { position:fixed; bottom:calc(86px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%); background:rgba(10,20,15,.7); padding:8px 14px; border-radius:20px; font-size:.8rem; color:#fff; z-index:4; white-space:nowrap; pointer-events:none; }
+  #panel { position:fixed; bottom:calc(82px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%); width:min(430px,94%); background:var(--card); border:1px solid var(--line); border-radius:16px; padding:14px; z-index:8; backdrop-filter:blur(6px); max-height:52vh; overflow-y:auto; }
   footer { --fbg:#ffffff; --ftx:#4a4a4a; --fln:rgba(0,0,0,.12); --fon:#0a9d68;
     position:fixed; left:0; right:0; bottom:0; z-index:9; display:flex; gap:0; padding:0 0 env(safe-area-inset-bottom);
     background:var(--fbg); border-top:1px solid var(--fln); }
   @media (prefers-color-scheme:dark) { footer { --fbg:#1f1f1f; --ftx:#c9c9c9; --fln:rgba(255,255,255,.1); --fon:#2ee59d; } }
-  footer .fb { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; padding:9px 4px 8px; border:0; border-radius:0; background:transparent; color:var(--ftx); text-decoration:none; font-size:.75rem; font-weight:500; cursor:pointer; }
+  footer .fb { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; padding:16px 4px 14px; min-height:76px; border:0; border-radius:0; background:transparent; color:var(--ftx); text-decoration:none; font-size:.75rem; font-weight:500; cursor:pointer; }
   footer .fb span { font-size:1.4rem; line-height:1; }
-  @media (max-width:480px) { footer .fb { font-size:.62rem; padding:8px 2px 7px; white-space:nowrap; } footer .fb span { font-size:1.2rem; } }
+  @media (max-width:480px) { footer .fb { font-size:.62rem; padding:14px 2px 12px; min-height:72px; white-space:nowrap; } footer .fb span { font-size:1.2rem; } }
   footer .fb.on { color:var(--fon); }
   footer .fb:active { background:var(--fln); }
   .hidden { display:none !important; }
@@ -110,7 +110,6 @@
 <footer>
   <a class="fb on" href="#" onclick="closePanel();return false"><span>🏠</span>Home</a>
   <a class="fb" href="wallet.html"><span>💼</span>Wallet</a>
-  <a class="fb" href="#" onclick="openWorker();return false"><span>🧑‍🌾</span>Worker</a>
   <a class="fb hidden" id="chatLink" href="#" target="_blank" rel="noopener"><span>💬</span>Chat</a>
   <a class="fb" href="verify.html"><span>✅</span>Status</a>
   <a class="fb" href="stats.html"><span>📊</span>Site Stats</a>
@@ -134,27 +133,6 @@
     <button class="alt full" disabled>Withdraw (not live yet)</button>
     <button class="alt full" onclick="closeWallet()">Close</button>
     <p class="note">This is a game balance. Withdrawals need sign-in, identity checks and a payment backend, which this front-end file does not include. Exchange rates are fixed numbers in CONFIG, not live rates.</p>
-  </div>
-</div>
-
-<div id="worker" class="modal hidden">
-  <div class="box">
-    <h3 style="margin-bottom:6px">🧑‍🌾 Farm Worker</h3>
-    <p class="sub">A worker waters your crops, harvests them and replants the same crop automatically for <span id="wkDays"></span> days.</p>
-    <div class="row"><span>Status</span><b id="wkStatus">Not hired</b></div>
-    <div class="row"><span>Price</span><b id="wkPrice"></b></div>
-    <p class="msg" id="wkMsg"></p>
-    <button class="gold full" id="wkHire" onclick="hireWorker()">Hire worker</button>
-    <div id="wkVerify" class="hidden">
-      <div class="row"><span>Verification deposit</span><b id="wkDep"></b></div>
-      <p class="note" id="wkPay"></p>
-      <p class="note">Use this ID as your payment reference: <b id="wkId" style="word-break:break-all"></b></p>
-      <button class="full" onclick="copyId()">Copy my ID</button>
-      <a class="btn gold full" href="verify.html" style="display:block;text-align:center;text-decoration:none;margin-top:6px;padding:10px 12px;border-radius:10px;font-weight:700;font-size:.9rem">Open verification page</a>
-      <button class="alt full" onclick="recheckVerified()">I have paid, check again</button>
-    </div>
-    <button class="alt full" onclick="closeWorker()">Close</button>
-    <p class="note">Only verified accounts (verified by deposit) can hire a worker or see the community chat. The worker only works while the farm page is open.</p>
   </div>
 </div>
 
@@ -207,8 +185,6 @@ const WATER_MIN_SECS = 20;               // ...but never less than this many sec
 const FERT_SPEED = 1.5;                  // fertilized crops grow this much faster (while watered)
 const FERT_COST = c => Math.max(2, Math.ceil(c.cost * 0.6));   // points per fertilizer (c = crop)
 const HARVEST_BOOST = 1.5;               // optional ad booster multiplies one harvest's payout
-const WORKER_COST_USD = 50;              // hiring a worker (verified accounts only)
-const WORKER_DAYS = 7;                   // one hire lasts this many days
 const VERIFY_DEPOSIT_NGN = 5800;         // one-time deposit to get a verified account
 const PAY_DETAILS = "Add your payment details here (bank name, account number, account name).";
 const CHAT_LINK = "https://chat.whatsapp.com/YOUR_LINK_HERE";   // community chat, shown to verified accounts only
@@ -235,7 +211,7 @@ const FIREBASE_CONFIG = {
 /* ============================================ */
 
 /* ---------- STATE ---------- */
-const S0 = { pts:20, plots:Array(START_PLOTS).fill(null), seeds:["corn"], ads:0, harv:0, daily:"", cur:0, mute:false, worker:{until:0}, last:[] };
+const S0 = { pts:20, plots:Array(START_PLOTS).fill(null), seeds:["corn"], ads:0, harv:0, daily:"", cur:0, mute:false };
 const GUEST_KEY = "urgentcash_farm3";
 const fresh = () => JSON.parse(JSON.stringify(S0));
 function sanitize(st){                                   // clamp tampered or corrupt saves to sane values
@@ -244,8 +220,6 @@ function sanitize(st){                                   // clamp tampered or co
   st.cur = CURRENCIES[st.cur] ? st.cur : 0; st.mute = !!st.mute; st.daily = typeof st.daily === "string" ? st.daily : "";
   st.seeds = Array.isArray(st.seeds) ? [...new Set(st.seeds.filter(k => CROPS[k]))] : ["corn"];
   if (!st.seeds.includes("corn")) st.seeds.unshift("corn");
-  st.worker = { until: num(st.worker && st.worker.until, 0, 8.64e15) };
-  st.last = Array.isArray(st.last) ? st.last.slice(0, MAX_PLOTS).map(k => CROPS[k] ? k : null) : [];
   st.plots = Array.isArray(st.plots) ? st.plots.slice(0, MAX_PLOTS) : [];
   while (st.plots.length < START_PLOTS) st.plots.push(null);
   st.plots = st.plots.map(p => (p && CROPS[p.key]) ? p : null);
@@ -495,62 +469,9 @@ function closePanel(){ select(-1); }
 function openWallet(){ $("wallet").classList.remove("hidden"); render(); }
 function closeWallet(){ $("wallet").classList.add("hidden"); }
 
-/* ---------- VERIFIED-ONLY: WORKER + CHAT ---------- */
+/* ---------- VERIFIED-ONLY: CHAT ---------- */
 let adminVerified = false;                                   // set from the cloud doc field "verified" (only you can set it, in the Firebase console)
 const isVerified = () => !!(user && adminVerified);
-const workerLeft = () => Math.max(0, S.worker.until - Date.now());
-function workerTick(){
-  if (!workerLeft()) return;
-  let changed = false;
-  S.plots.forEach((p,i) => {
-    if (p && prog(p) >= totalMs(p)) {                           // harvest
-      S.pts += payout(p); S.harv++; S.last[i] = p.key; S.plots[i] = null; changed = true;
-    }
-    if (!S.plots[i] && S.last[i] && S.seeds.includes(S.last[i]) && S.pts >= CROPS[S.last[i]].cost) {   // replant same crop
-      const key = S.last[i]; S.pts -= CROPS[key].cost;
-      S.plots[i] = { key, grown:0, t:Date.now(), wetUntil:0, fert:false, boosted:false, hboost:false }; changed = true;
-    }
-    const q = S.plots[i];
-    if (q && q.wetUntil - Date.now() < 5000 && water(i, true)) changed = true;   // water before it runs dry
-  });
-  if (changed) { save(); render(); }
-}
-setInterval(workerTick, 4000);
-function openWorker(){ $("worker").classList.remove("hidden"); renderWorker(); }
-function closeWorker(){ $("worker").classList.add("hidden"); }
-function wkMsg(t){ $("wkMsg").textContent = t || ""; }
-function renderWorker(){
-  $("wkDays").textContent = WORKER_DAYS;
-  $("wkPrice").textContent = "$" + WORKER_COST_USD + " (" + money(WORKER_COST_USD*POINTS_PER_USD) + ")";
-  const left = workerLeft();
-  $("wkStatus").textContent = left ? "Working · " + (left >= 864e5 ? Math.floor(left/864e5) + "d " : "") + fmt(left % 864e5 || left) + " left" : "Not hired";
-  $("wkHire").textContent = left ? "Extend by " + WORKER_DAYS + " days" : "Hire for " + WORKER_DAYS + " days";
-  const v = isVerified();
-  $("wkHire").classList.toggle("hidden", !v); $("wkVerify").classList.toggle("hidden", v);
-  $("wkDep").textContent = "₦" + VERIFY_DEPOSIT_NGN.toLocaleString("en-NG");
-  $("wkPay").textContent = PAY_DETAILS; $("wkId").textContent = user ? user.uid : "";
-  if (!v) wkMsg(user ? "Verify your account to hire a worker. Verification is confirmed after your deposit is received." : "Sign in to hire a worker.");
-}
-function hireWorker(){
-  if (!isVerified()) { sfx.error(); return wkMsg("Only verified accounts can hire a worker."); }
-  const cost = WORKER_COST_USD * POINTS_PER_USD;
-  if (S.pts < cost) { sfx.error(); return wkMsg("Not enough balance. You need " + money(cost) + "."); }
-  S.pts -= cost; S.worker.until = Math.max(Date.now(), S.worker.until) + WORKER_DAYS*864e5;
-  sfx.unlock(); wkMsg(""); toast("Worker hired for " + WORKER_DAYS + " days"); save(); render(); renderWorker();
-}
-async function copyId(){
-  try { await navigator.clipboard.writeText(user.uid); toast("ID copied"); } catch(e) { wkMsg("Copy failed. Select the ID above and copy it."); }
-}
-async function recheckVerified(){
-  if (!user || !db) return wkMsg("Go online and sign in first.");
-  try {
-    const d = (await userDoc().get()).data();
-    adminVerified = !!(d && d.verified === true);
-    if (adminVerified) toast("Account verified"); else wkMsg("Not verified yet. Deposits are confirmed manually, please check back soon.");
-  } catch(e) { wkMsg("Could not check. Check your connection."); }
-  render(); renderWorker();
-}
-
 /* ---------- UI RENDER ---------- */
 function renderPanel(force){
   const el = $("panel");
@@ -609,7 +530,6 @@ function render(){
   updateDailyBtn();
   const cl = $("chatLink"); cl.classList.toggle("hidden", !isVerified() || !CHAT_LINK);
   if (isVerified()) cl.href = CHAT_LINK;
-  if (!$("worker").classList.contains("hidden")) renderWorker();
   renderPanel(false);
 }
 
