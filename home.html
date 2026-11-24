@@ -457,15 +457,60 @@ function pushCloud(){
 addEventListener("pagehide", () => { pushCloud(); });
 document.addEventListener("visibilitychange", () => { if (document.hidden) pushCloud(); });
 
-// Access gate: only Firebase-authenticated users may use this page.
-if (!auth) {
-  window.location.replace("login.html");
-} else auth.onAuthStateChanged(async u => {
-  if (!u) {
-    user = null; synced = false;
-    window.location.replace("login.html");
+// Access gate: only Firebase-verified users may use this page.
+// Before redirecting, Firebase is asked to confirm the visitor really is signed out / locked out.
+const LOGIN_PAGE = "login.html";   // must be on the SAME domain as this page
+let gated = false;
+
+function goLogin(reason){
+  gated = true; user = null; synced = false;
+  // Loop guard: if we keep bouncing between pages, stop and show the in-page sign-in instead.
+  let n = 0;
+  try { n = +sessionStorage.getItem("uc_bounce") || 0; sessionStorage.setItem("uc_bounce", String(n + 1)); } catch(e) {}
+  if (n >= 2 || !LOGIN_PAGE) {
+    document.body.style.visibility = "visible";
+    amsg(reason || "Please sign in to continue."); $("auth").classList.remove("hidden"); authMode("in");
+    if (reason) amsg(reason);
     return;
   }
+  window.location.replace(LOGIN_PAGE);
+}
+
+// Is this visitor truly signed out? Let Firebase finish restoring/finishing any sign-in first.
+async function confirmSignedOut(){
+  try { await auth.getRedirectResult(); } catch(e) {}
+  await new Promise(r => setTimeout(r, 800));
+  return !auth.currentUser;
+}
+
+// Does Firebase still accept this account? (catches disabled, deleted, or revoked accounts)
+async function verifyAccount(u){
+  try { await u.reload(); await u.getIdToken(true); return { ok:true }; }
+  catch(e){
+    const c = e && e.code || "";
+    if (c === "auth/user-disabled") return { ok:false, msg:"This account has been disabled." };
+    if (["auth/user-not-found","auth/user-token-expired","auth/invalid-user-token"].includes(c))
+      return { ok:false, msg:"Your session expired. Please sign in again." };
+    console.warn("Account check skipped:", c);   // network error etc. -> don't lock out
+    return { ok:true };
+  }
+}
+
+if (!auth) {
+  addEventListener("DOMContentLoaded", () => goLogin("Sign-in is unavailable. Check your connection."));
+} else auth.onAuthStateChanged(async u => {
+  if (!u) {
+    if (await confirmSignedOut()) goLogin();
+    return;
+  }
+  const chk = await verifyAccount(u);
+  if (!chk.ok) {
+    try { await auth.signOut(); } catch(e) {}
+    goLogin(chk.msg);
+    return;
+  }
+  try { sessionStorage.removeItem("uc_bounce"); } catch(e) {}
+  gated = false;
   user = u; synced = false;
   try {
     const snap = await userDoc().get();
@@ -484,7 +529,8 @@ if (!auth) {
   if (!CURRENCIES[S.cur]) S.cur = 0;
   try { localStorage.setItem(localKey(), JSON.stringify(S)); } catch(e) {}
   if (synced) pushCloud();
-  select(-1); render();
+  closeAuth();
+  try { select(-1); render(); } catch(e) { console.error(e); }
   document.body.style.visibility = "visible";
 });
 
@@ -492,7 +538,7 @@ function openAuth(){
   if (!auth) { toast("Add your Firebase settings in FIREBASE_CONFIG"); return; }
   amsg(""); $("auth").classList.remove("hidden"); render();
 }
-function closeAuth(){ $("auth").classList.add("hidden"); }
+function closeAuth(){ if (gated && !user) return; $("auth").classList.add("hidden"); }
 function authMode(m){
   aMode = m; amsg("");
   $("tabIn").className = m === "in" ? "gold" : "alt"; $("tabUp").className = m === "up" ? "gold" : "alt";
