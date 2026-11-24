@@ -1,1 +1,332 @@
-my profile 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light dark">
+<title>Profile · Urgent Cash</title>
+<link rel="icon" type="image/png" href="logo.png">
+<style>
+:root{
+  --bg:#eaf6ff; --bg2:#dff5c9; --card:#ffffff; --text:#172438; --muted:#68778b; --border:#dce5ef;
+  --primary:#1678e8; --soft:#eaf3ff; --gold:#e0a400; --good:#16a36a; --bad:#d93f3f;
+  --fbg:#ffffff; --ftx:#4a4a4a; --fln:rgba(0,0,0,.12); --fon:#0a9d68;
+}
+@media (prefers-color-scheme:dark){
+  :root{ --bg:#0b1220; --bg2:#0f2a1c; --card:#151e2e; --text:#edf4ff; --muted:#a0aec2; --border:#29374c;
+    --primary:#3189f4; --soft:#192a42; --gold:#ffc83d; --good:#2ee59d; --bad:#ff8a80;
+    --fbg:#1f1f1f; --ftx:#c9c9c9; --fln:rgba(255,255,255,.1); --fon:#2ee59d; }
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;min-height:100vh;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--text);
+  background:linear-gradient(var(--bg),var(--bg2)) fixed;padding:18px 16px calc(96px + env(safe-area-inset-bottom))}
+.wrap{max-width:480px;margin:0 auto;display:grid;gap:14px}
+.top{display:flex;align-items:center;gap:12px}
+.top img{width:52px;height:52px;object-fit:contain}
+.top h1{margin:0;font-size:1.3rem;letter-spacing:-.4px}
+.top p{margin:2px 0 0;color:var(--muted);font-size:.85rem}
+.card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:18px;box-shadow:0 8px 28px rgba(0,0,0,.07)}
+.card h2{margin:0 0 12px;font-size:1.02rem}
+.who{display:flex;gap:14px;align-items:center}
+.avatar{width:58px;height:58px;border-radius:50%;background:var(--primary);color:#fff;display:grid;place-items:center;font-size:24px;font-weight:900;flex-shrink:0}
+.who b{display:block;font-size:1.1rem;overflow-wrap:anywhere}
+.who span{color:var(--muted);font-size:.85rem;overflow-wrap:anywhere}
+.badge{display:inline-flex;align-items:center;gap:6px;color:var(--good);font-size:.75rem;font-weight:700;margin-top:6px}
+.badge i{width:8px;height:8px;border-radius:50%;background:var(--good)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat{background:var(--soft);border:1px solid var(--border);border-radius:14px;padding:12px}
+.stat small{display:block;color:var(--muted);font-size:.74rem;margin-bottom:4px}
+.stat b{font-size:1.15rem}
+.stat.gold b{color:var(--gold)}
+.row{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);font-size:.9rem}
+.row:last-child{border-bottom:0}
+.row span{color:var(--muted)} .row b{text-align:right;overflow-wrap:anywhere;font-weight:600}
+.code{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--soft);border:2px dashed var(--primary);border-radius:14px;padding:12px 14px;margin-bottom:10px}
+.code b{font-size:1.6rem;letter-spacing:4px;font-family:ui-monospace,Menlo,monospace}
+button,.btn{font:inherit;border:0;border-radius:12px;padding:12px 14px;font-weight:700;cursor:pointer;background:var(--primary);color:#fff;text-align:center;text-decoration:none;display:block}
+button.alt{background:var(--soft);color:var(--text);border:1px solid var(--border)}
+button.sm{padding:9px 12px;font-size:.85rem;display:inline-block}
+button:disabled{opacity:.5;cursor:not-allowed}
+button:active{transform:scale(.98)}
+.btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.note{color:var(--muted);font-size:.8rem;line-height:1.5;margin:8px 0 0}
+.reward{background:linear-gradient(135deg,rgba(255,200,61,.22),rgba(46,229,157,.16));border:1px solid var(--gold);border-radius:14px;padding:12px;font-size:.88rem;line-height:1.5;margin-bottom:12px}
+.list{display:grid;gap:8px;margin-top:6px}
+.item{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--soft);border:1px solid var(--border);border-radius:12px;padding:10px 12px;font-size:.88rem}
+.item small{color:var(--muted);display:block}
+.tag{font-weight:800;font-size:.8rem;white-space:nowrap}
+.tag.ok{color:var(--good)} .tag.wait{color:var(--muted)}
+input{width:100%;font:inherit;padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--bg);color:var(--text);margin-bottom:8px}
+input.up{text-transform:uppercase;letter-spacing:2px}
+.msg{min-height:1.2em;font-size:.82rem;margin:2px 0 6px}
+.msg.err{color:var(--bad)} .msg.ok{color:var(--good)}
+.hidden{display:none!important}
+.center{text-align:center;color:var(--muted);padding:40px 0}
+#toast{position:fixed;left:50%;top:18px;transform:translate(-50%,-80px);background:var(--primary);color:#fff;padding:9px 18px;border-radius:20px;font-weight:700;font-size:.88rem;z-index:50;transition:.3s;pointer-events:none;max-width:90%;text-align:center}
+#toast.on{transform:translate(-50%,0)}
+footer{position:fixed;left:0;right:0;bottom:0;z-index:9;display:flex;gap:0;padding:0 0 env(safe-area-inset-bottom);background:var(--fbg);border-top:1px solid var(--fln)}
+footer a{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 4px 8px;color:var(--ftx);text-decoration:none;font-size:.75rem;font-weight:500}
+footer a span{font-size:1.4rem;line-height:1}
+footer a.on{color:var(--fon)} footer a:active{background:var(--fln)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <img src="logo.png" alt="Urgent Cash logo">
+    <div><h1>My Profile</h1><p>Your account, balance and invites</p></div>
+  </div>
+
+  <div id="loading" class="center">Loading your profile…</div>
+
+  <div id="main" class="hidden" style="display:grid;gap:14px">
+    <section class="card">
+      <div class="who">
+        <div class="avatar" id="avatar">U</div>
+        <div><b id="pName">User</b><span id="pEmail"></span><div class="badge"><i></i>Signed in</div></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>💰 Balance & farm</h2>
+      <div class="grid">
+        <div class="stat gold"><small>Balance (USD)</small><b id="sUsd">$0.00</b></div>
+        <div class="stat gold"><small>Balance (NGN)</small><b id="sNgn">₦0.00</b></div>
+        <div class="stat"><small>Plots unlocked</small><b id="sPlots">0</b></div>
+        <div class="stat"><small>Total harvests</small><b id="sHarv">0</b></div>
+        <div class="stat"><small>Ads watched</small><b id="sAds">0</b></div>
+        <div class="stat"><small>Invite earnings</small><b id="sEarn">$0.00</b></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>🎁 Invite friends, earn $<span id="rwAmt">5</span></h2>
+      <div class="reward">Share your invite code. When a friend registers with it, you get <b>$<span id="rwAmt2">5</span></b> added to your balance.</div>
+      <div class="code"><b id="myCode">------</b><button class="sm" id="copyCode">Copy</button></div>
+      <div class="btns">
+        <button class="alt" id="copyLink">🔗 Copy invite link</button>
+        <button id="shareBtn">📤 Share</button>
+      </div>
+      <div class="grid">
+        <div class="stat"><small>Users invited</small><b id="sInv">0</b></div>
+        <div class="stat"><small>Earned from invites</small><b id="sInvEarn">$0.00</b></div>
+      </div>
+      <div class="list" id="invList"></div>
+      <p class="note" id="invEmpty">Nobody has used your code yet.</p>
+    </section>
+
+    <section class="card" id="useCard">
+      <h2>🎟️ Were you invited?</h2>
+      <div id="useForm">
+        <input id="refInput" class="up" maxlength="12" placeholder="Enter invite code" autocomplete="off">
+        <p class="msg" id="refMsg"></p>
+        <button id="refBtn">Apply code</button>
+        <p class="note">You can only use one code, and only once.</p>
+      </div>
+      <div id="usedInfo" class="hidden"></div>
+    </section>
+
+    <section class="card">
+      <h2>👤 Account details</h2>
+      <input id="nameInput" maxlength="40" placeholder="Display name">
+      <p class="msg" id="nameMsg"></p>
+      <button class="alt" id="nameBtn">Save name</button>
+      <div style="margin-top:8px">
+        <div class="row"><span>Email</span><b id="dEmail"></b></div>
+        <div class="row"><span>Account ID</span><b id="dUid"></b></div>
+        <div class="row"><span>Member since</span><b id="dSince"></b></div>
+        <div class="row"><span>Last sign-in</span><b id="dLast"></b></div>
+      </div>
+    </section>
+
+    <button class="alt" id="logoutBtn">Logout</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+<footer>
+  <a href="home.html"><span>🏠</span>Home</a>
+  <a href="wallet.html"><span>💼</span>Wallet</a>
+  <a href="profile.html" class="on"><span>👤</span>Profile</a>
+</footer>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
+import { getAuth, onAuthStateChanged, signOut, updateProfile } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
+import { getFirestore, doc, getDoc, setDoc, collection, query, where, getDocs, runTransaction, serverTimestamp, increment }
+  from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
+
+/* ============ CONFIG ============ */
+const REFERRAL_USD   = 5;      // dollars the inviter gets for each friend who registers with the code
+const POINTS_PER_USD = 100;    // must match home.html
+const NGN_RATE       = 1500;   // fixed rate, same as home.html
+const LOGIN_PAGE     = "login.html";
+const REGISTER_PAGE  = "register.html";   // invite link = this page + ?ref=CODE
+const firebaseConfig = {
+  apiKey:"AIzaSyA2LtEPKS6jU3nIsAj-KV3MoxmUULj_5a8", authDomain:"urgent-cash-76162.firebaseapp.com",
+  projectId:"urgent-cash-76162", storageBucket:"urgent-cash-76162.firebasestorage.app",
+  messagingSenderId:"1000483783652", appId:"1:1000483783652:web:f4406e7adb5016b5167df1", measurementId:"G-PN610M8757"
+};
+/* ================================== */
+
+const REWARD_PTS = REFERRAL_USD * POINTS_PER_USD;
+const app = initializeApp(firebaseConfig), auth = getAuth(app), db = getFirestore(app);
+const $ = id => document.getElementById(id);
+const usd = pts => "$" + (pts / POINTS_PER_USD).toLocaleString("en-US", { minimumFractionDigits:2, maximumFractionDigits:2 });
+const ngn = pts => "₦" + (pts / POINTS_PER_USD * NGN_RATE).toLocaleString("en-NG", { minimumFractionDigits:2, maximumFractionDigits:2 });
+const fmtDate = d => d ? new Date(d).toLocaleString(undefined, { year:"numeric", month:"short", day:"numeric", hour:"2-digit", minute:"2-digit" }) : "—";
+const toast = m => { const t = $("toast"); t.textContent = m; t.classList.add("on"); setTimeout(() => t.classList.remove("on"), 2400); };
+const setMsg = (id, text, kind) => { const e = $(id); e.textContent = text || ""; e.className = "msg" + (kind ? " " + kind : ""); };
+const maskName = n => { n = (n || "User").trim(); return n.slice(0, 2) + "***"; };
+
+let user = null, data = {};
+const userRef = () => doc(db, "users", user.uid);
+
+/* ---- invite code: random, unique, stored in referralCodes/{code} -> { uid } ---- */
+const CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const randCode = () => Array.from(crypto.getRandomValues(new Uint8Array(7)), b => CHARS[b % CHARS.length]).join("");
+async function ensureInviteCode(){
+  if (data.inviteCode) return;
+  for (let i = 0; i < 6; i++) {
+    const code = randCode();
+    try {
+      await runTransaction(db, async tx => {
+        const cref = doc(db, "referralCodes", code);
+        if ((await tx.get(cref)).exists()) throw new Error("taken");
+        tx.set(cref, { uid:user.uid, createdAt:serverTimestamp() });
+        tx.set(userRef(), { inviteCode:code }, { merge:true });
+      });
+      data.inviteCode = code; return;
+    } catch (e) { if (e.message !== "taken") throw e; }
+  }
+  throw new Error("Could not create invite code");
+}
+
+/* ---- use someone else's code (once). Creates referrals/{myUid}; the inviter is paid when they open their profile ---- */
+async function applyCode(raw){
+  const code = (raw || "").trim().toUpperCase();
+  if (!code) throw new Error("Enter an invite code.");
+  if (code === data.inviteCode) throw new Error("You can't use your own code.");
+  await runTransaction(db, async tx => {
+    const me = await tx.get(userRef());
+    if (me.exists() && me.data().referredBy) throw new Error("You already used an invite code.");
+    const c = await tx.get(doc(db, "referralCodes", code));
+    if (!c.exists()) throw new Error("That invite code does not exist.");
+    const inviter = c.data().uid;
+    if (inviter === user.uid) throw new Error("You can't use your own code.");
+    const rref = doc(db, "referrals", user.uid);
+    if ((await tx.get(rref)).exists()) throw new Error("You already used an invite code.");
+    tx.set(rref, { inviterUid:inviter, inviteeUid:user.uid, code, inviteeName:maskName(user.displayName || (user.email || "").split("@")[0]), rewarded:false, createdAt:serverTimestamp() });
+    tx.set(userRef(), { referredBy:inviter, referredByCode:code }, { merge:true });
+  });
+  data.referredBy = true; data.referredByCode = code;
+}
+
+/* ---- pay the inviter $5 for each friend not yet rewarded ---- */
+async function loadReferrals(){
+  const snap = await getDocs(query(collection(db, "referrals"), where("inviterUid", "==", user.uid)));
+  const list = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+  let paid = 0;
+  for (const r of list.filter(x => !x.rewarded)) {
+    try {
+      await runTransaction(db, async tx => {
+        const rref = doc(db, "referrals", r.id);
+        if ((await tx.get(rref)).data().rewarded) return;
+        tx.update(rref, { rewarded:true, rewardedAt:serverTimestamp() });
+        tx.update(userRef(), { "state.pts":increment(REWARD_PTS), refEarnedPts:increment(REWARD_PTS), refCount:increment(1) });
+      });
+      r.rewarded = true; paid++;
+    } catch (e) { console.error("Reward failed", e); }
+  }
+  if (paid) { toast("🎉 +" + usd(paid * REWARD_PTS) + " for " + paid + " new invite" + (paid > 1 ? "s" : "")); await refreshUser(); }
+  return list.sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+}
+
+async function refreshUser(){ data = (await getDoc(userRef())).data() || {}; }
+
+/* ---- render ---- */
+function renderStats(){
+  const st = data.state || {}, pts = st.pts || 0, earn = data.refEarnedPts || 0;
+  $("sUsd").textContent = usd(pts); $("sNgn").textContent = ngn(pts);
+  $("sPlots").textContent = (st.plots || []).length || 1; $("sHarv").textContent = st.harv || 0; $("sAds").textContent = st.ads || 0;
+  $("sEarn").textContent = usd(earn); $("sInvEarn").textContent = usd(earn);
+}
+function renderReferrals(list){
+  $("sInv").textContent = list.length;
+  $("invEmpty").classList.toggle("hidden", list.length > 0);
+  $("invList").innerHTML = list.map(r => `<div class="item"><div><b>${r.inviteeName || "User"}</b><small>${fmtDate(r.createdAt?.toMillis?.())}</small></div>
+    <span class="tag ${r.rewarded ? "ok" : "wait"}">${r.rewarded ? "+" + usd(REWARD_PTS) : "Pending"}</span></div>`).join("");
+}
+function renderUse(){
+  const used = !!data.referredBy;
+  $("useForm").classList.toggle("hidden", used); $("usedInfo").classList.toggle("hidden", !used);
+  if (used) $("usedInfo").innerHTML = `<div class="item"><div><b>Invited with code</b><small>Thanks for joining through a friend</small></div><span class="tag ok">${data.referredByCode || ""}</span></div>`;
+}
+function renderAll(list){
+  const name = user.displayName || data.displayName || "User";
+  $("avatar").textContent = name.charAt(0).toUpperCase(); $("pName").textContent = name; $("pEmail").textContent = user.email || "";
+  $("nameInput").value = user.displayName || data.displayName || "";
+  $("dEmail").textContent = user.email || "—"; $("dUid").textContent = user.uid.slice(0, 10) + "…";
+  $("dSince").textContent = fmtDate(user.metadata.creationTime); $("dLast").textContent = fmtDate(user.metadata.lastSignInTime);
+  $("myCode").textContent = data.inviteCode || "------";
+  $("rwAmt").textContent = $("rwAmt2").textContent = REFERRAL_USD;
+  renderStats(); renderReferrals(list); renderUse();
+}
+const inviteLink = () => new URL(REGISTER_PAGE, location.href).href + "?ref=" + encodeURIComponent(data.inviteCode);
+async function copy(text, ok){ try { await navigator.clipboard.writeText(text); toast(ok); } catch (e) { prompt("Copy this:", text); } }
+
+/* ---- start ---- */
+onAuthStateChanged(auth, async u => {
+  if (!u) { location.replace(LOGIN_PAGE); return; }
+  user = u;
+  try {
+    await refreshUser();
+    // keep a readable copy of the user's details in their cloud document
+    await setDoc(userRef(), { uid:u.uid, email:u.email || "", displayName:u.displayName || data.displayName || "", lastSeenAt:serverTimestamp() }, { merge:true });
+    await ensureInviteCode();
+    // code saved by the registration page (?ref=CODE) is applied automatically, once
+    let pending = ""; try { pending = new URLSearchParams(location.search).get("ref") || localStorage.getItem("uc_ref") || ""; } catch (e) {}
+    if (pending && !data.referredBy) {
+      try { await applyCode(pending); toast("Invite code applied"); } catch (e) { console.warn(e.message); }
+    }
+    try { localStorage.removeItem("uc_ref"); } catch (e) {}
+    await refreshUser();
+    const list = await loadReferrals();
+    renderAll(list);
+  } catch (e) {
+    console.error(e);
+    $("loading").textContent = "Could not load your profile. Check your connection and refresh.";
+    return;
+  }
+  $("loading").classList.add("hidden"); $("main").classList.remove("hidden");
+});
+
+$("copyCode").onclick = () => copy(data.inviteCode, "Code copied");
+$("copyLink").onclick = () => copy(inviteLink(), "Invite link copied");
+$("shareBtn").onclick = async () => {
+  const text = `Join me on Urgent Cash Farm and use my invite code ${data.inviteCode}`;
+  if (navigator.share) { try { await navigator.share({ title:"Urgent Cash", text, url:inviteLink() }); } catch (e) {} }
+  else copy(text + " " + inviteLink(), "Invite message copied");
+};
+$("refBtn").onclick = async () => {
+  $("refBtn").disabled = true; setMsg("refMsg", "");
+  try { await applyCode($("refInput").value); toast("Invite code applied"); renderUse(); }
+  catch (e) { setMsg("refMsg", e.message || "Could not apply the code.", "err"); }
+  $("refBtn").disabled = false;
+};
+$("nameBtn").onclick = async () => {
+  const n = $("nameInput").value.trim();
+  if (n.length < 2) return setMsg("nameMsg", "Enter at least 2 characters.", "err");
+  $("nameBtn").disabled = true;
+  try {
+    await updateProfile(user, { displayName:n });
+    await setDoc(userRef(), { displayName:n }, { merge:true });
+    data.displayName = n; setMsg("nameMsg", "Saved.", "ok");
+    $("pName").textContent = n; $("avatar").textContent = n.charAt(0).toUpperCase();
+  } catch (e) { setMsg("nameMsg", "Could not save. Try again.", "err"); }
+  $("nameBtn").disabled = false;
+};
+$("logoutBtn").onclick = async () => { $("logoutBtn").disabled = true; try { await signOut(auth); } catch (e) { $("logoutBtn").disabled = false; toast("Could not log out"); } };
+</script>
+</body>
+</html>
