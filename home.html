@@ -63,7 +63,7 @@
   #err { position:fixed; inset:0; background:#0e1512; display:none; align-items:center; justify-content:center; text-align:center; padding:30px; z-index:100; line-height:1.5; }
 </style>
 </head>
-<body>
+<body style="visibility:hidden">
 
 <canvas id="c"></canvas>
 
@@ -457,10 +457,14 @@ function pushCloud(){
 addEventListener("pagehide", () => { pushCloud(); });
 document.addEventListener("visibilitychange", () => { if (document.hidden) pushCloud(); });
 
-if (auth) auth.onAuthStateChanged(async u => {
-  if (!u) {                                              // signed out: return to guest farm
-    if (user) { user = null; synced = false; S = load(GUEST_KEY) || fresh(); select(-1); }
-    render(); return;
+// Access gate: only Firebase-authenticated users may use this page.
+if (!auth) {
+  window.location.replace("login.html");
+} else auth.onAuthStateChanged(async u => {
+  if (!u) {
+    user = null; synced = false;
+    window.location.replace("login.html");
+    return;
   }
   user = u; synced = false;
   try {
@@ -481,6 +485,7 @@ if (auth) auth.onAuthStateChanged(async u => {
   try { localStorage.setItem(localKey(), JSON.stringify(S)); } catch(e) {}
   if (synced) pushCloud();
   select(-1); render();
+  document.body.style.visibility = "visible";
 });
 
 function openAuth(){
