@@ -102,23 +102,18 @@
   <div class="box">
     <h3 style="margin-bottom:10px">👤 Account</h3>
     <div id="authOut">
-      <div class="tabs">
-        <button id="tabIn" class="gold" onclick="authMode('in')">Sign in</button>
-        <button id="tabUp" class="alt" onclick="authMode('up')">Create account</button>
-      </div>
       <input id="aEmail" type="email" placeholder="Email" autocomplete="email">
-      <input id="aPass" type="password" placeholder="Password (6+ characters)" autocomplete="current-password">
+      <input id="aPass" type="password" placeholder="Password" autocomplete="current-password">
       <p class="msg" id="aMsg"></p>
       <button class="full" id="aGo" onclick="authSubmit()">Sign in</button>
-      <button class="alt full" onclick="googleSignIn()">Continue with Google</button>
       <button class="alt full" id="aForgot" onclick="resetPass()">Forgot password?</button>
     </div>
     <div id="authIn" class="hidden">
       <div class="row"><span>Signed in as</span><b id="aWho"></b></div>
       <p class="note">Your farm saves to your account automatically, so you can play on any device.</p>
       <button class="alt full" onclick="signOutUser()">Sign out</button>
+      <button class="alt full" onclick="closeAuth()">Close</button>
     </div>
-    <button class="alt full" onclick="closeAuth()">Close</button>
   </div>
 </div>
 
@@ -567,13 +562,7 @@ function openAuth(){
   amsg(""); $("auth").classList.remove("hidden"); render();
 }
 function closeAuth(){ if (gated && !user) return; $("auth").classList.add("hidden"); }
-function authMode(m){
-  aMode = m; amsg("");
-  $("tabIn").className = m === "in" ? "gold" : "alt"; $("tabUp").className = m === "up" ? "gold" : "alt";
-  $("aGo").textContent = m === "in" ? "Sign in" : "Create account";
-  $("aPass").autocomplete = m === "in" ? "current-password" : "new-password";
-  $("aForgot").classList.toggle("hidden", m === "up");
-}
+function authMode(){ aMode = "in"; amsg(""); }
 function authErr(e){
   const c = (e && e.code) || "";
   if (c === "auth/invalid-email") return "That email address is not valid.";
@@ -587,21 +576,13 @@ function authErr(e){
 }
 async function authSubmit(){
   const email = $("aEmail").value.trim(), pass = $("aPass").value;
-  if (!email || pass.length < 6) return amsg("Enter your email and a password of 6+ characters.");
+  if (!email || !pass) return amsg("Enter your email and password.");
   $("aGo").disabled = true; amsg("");
   try {
-    if (aMode === "up") await auth.createUserWithEmailAndPassword(email, pass); else await auth.signInWithEmailAndPassword(email, pass);
-    closeAuth(); $("aPass").value = ""; toast(aMode === "up" ? "Account created" : "Welcome back");
+    await auth.signInWithEmailAndPassword(email, pass);
+    closeAuth(); $("aPass").value = ""; toast("Welcome back");
   } catch(e) { amsg(authErr(e)); }
   $("aGo").disabled = false;
-}
-async function googleSignIn(){
-  const prov = new firebase.auth.GoogleAuthProvider(); amsg("");
-  try { await auth.signInWithPopup(prov); closeAuth(); toast("Welcome"); }
-  catch(e) {
-    if (e.code === "auth/popup-blocked" || e.code === "auth/operation-not-supported-in-this-environment") { try { return await auth.signInWithRedirect(prov); } catch(e2) { e = e2; } }
-    amsg(authErr(e));
-  }
 }
 async function resetPass(){
   const email = $("aEmail").value.trim();
