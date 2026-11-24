@@ -1,1 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light dark">
+<title>Withdraw · Urgent Cash</title>
+<link rel="icon" type="image/png" href="../logo.png">
+<style>
+:root{
+  --bg:#eaf6ff; --bg2:#dff5c9; --card:#ffffff; --text:#172438; --muted:#68778b; --border:#dce5ef;
+  --primary:#1678e8; --soft:#eaf3ff; --gold:#e0a400; --good:#16a36a; --bad:#d93f3f;
+  --fbg:#ffffff; --ftx:#4a4a4a; --fln:rgba(0,0,0,.12); --fon:#0a9d68;
+}
+@media (prefers-color-scheme:dark){
+  :root{ --bg:#0b1220; --bg2:#0f2a1c; --card:#151e2e; --text:#edf4ff; --muted:#a0aec2; --border:#29374c;
+    --primary:#3189f4; --soft:#192a42; --gold:#ffc83d; --good:#2ee59d; --bad:#ff8a80;
+    --fbg:#1f1f1f; --ftx:#c9c9c9; --fln:rgba(255,255,255,.1); --fon:#2ee59d; }
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;min-height:100vh;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--text);
+  background:linear-gradient(var(--bg),var(--bg2)) fixed;padding:18px 16px calc(96px + env(safe-area-inset-bottom))}
+.wrap{max-width:480px;margin:0 auto;display:grid;gap:14px}
+.top{display:flex;align-items:center;gap:12px}
+.top a.back{width:40px;height:40px;border-radius:12px;background:var(--card);border:1px solid var(--border);display:grid;place-items:center;text-decoration:none;color:var(--text);font-size:1.2rem}
+.top h1{margin:0;font-size:1.3rem;letter-spacing:-.4px}
+.top p{margin:2px 0 0;color:var(--muted);font-size:.85rem}
+.card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:18px;box-shadow:0 8px 28px rgba(0,0,0,.07)}
+.card h2{margin:0 0 12px;font-size:1.02rem}
+.avail{display:flex;justify-content:space-between;align-items:center}
+.avail small{color:var(--muted)} .avail b{font-size:1.5rem;color:var(--gold)}
+label{display:block;font-size:.82rem;color:var(--muted);margin:10px 0 4px;font-weight:600}
+input{width:100%;font:inherit;padding:12px;border-radius:12px;border:1px solid var(--border);background:var(--bg);color:var(--text);margin-bottom:4px}
+.amtrow{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:start}
+button.max{font:inherit;border:1px solid var(--border);border-radius:12px;padding:12px 14px;font-weight:700;cursor:pointer;background:var(--soft);color:var(--text)}
+button.go{font:inherit;border:0;border-radius:12px;padding:13px 14px;font-weight:700;cursor:pointer;background:var(--primary);color:#fff;width:100%;margin-top:12px}
+button.go:disabled{opacity:.5;cursor:not-allowed}
+.hint{color:var(--muted);font-size:.8rem;margin:2px 0 0}
+.msg{min-height:1.2em;font-size:.84rem;margin:8px 0 0}
+.msg.err{color:var(--bad)} .msg.ok{color:var(--good)}
+.warn{background:linear-gradient(135deg,rgba(255,200,61,.22),rgba(46,229,157,.16));border:1px solid var(--gold);border-radius:14px;padding:12px;font-size:.84rem;line-height:1.5}
+.hidden{display:none!important}
+.center{text-align:center;color:var(--muted);padding:40px 0}
+footer{position:fixed;left:0;right:0;bottom:0;z-index:9;display:flex;gap:0;padding:0 0 env(safe-area-inset-bottom);background:var(--fbg);border-top:1px solid var(--fln)}
+footer a{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 4px 8px;color:var(--ftx);text-decoration:none;font-size:.75rem;font-weight:500}
+footer a span{font-size:1.4rem;line-height:1}
+footer a.on{color:var(--fon)} footer a:active{background:var(--fln)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <a class="back" href="index.html" aria-label="Back to wallet">←</a>
+    <div><h1>Withdraw</h1><p>Request a payout to your bank</p></div>
+  </div>
+
+  <div id="loading" class="center">Loading…</div>
+
+  <div id="main" class="hidden" style="display:grid;gap:14px">
+    <section class="card">
+      <div class="avail"><small>Available balance</small><b id="avail">$0.00</b></div>
+    </section>
+
+    <section class="card">
+      <h2>Withdrawal details</h2>
+      <label for="amt">Amount (USD)</label>
+      <div class="amtrow">
+        <input id="amt" type="number" inputmode="decimal" min="0" step="any" placeholder="0.00">
+        <button class="max" type="button" id="maxBtn">Max</button>
+      </div>
+      <p class="hint" id="conv"></p>
+      <label for="bank">Bank name</label>
+      <input id="bank" maxlength="60" placeholder="e.g. GTBank">
+      <label for="num">Account number</label>
+      <input id="num" inputmode="numeric" maxlength="20" placeholder="10-digit account number">
+      <label for="aname">Account name</label>
+      <input id="aname" maxlength="80" placeholder="Name on the account">
+      <button class="go" id="sendBtn">Request withdrawal</button>
+      <p class="msg" id="msg"></p>
+    </section>
+
+    <div class="warn">The amount is taken from your balance as soon as you submit. Your request shows as <b>pending</b> until it is paid. Check your account details carefully, because wrong details can delay or lose a payout.</div>
+  </div>
+</div>
+
+<footer>
+  <a href="../home.html"><span>🏠</span>Home</a>
+  <a href="index.html" class="on"><span>💼</span>Wallet</a>
+  <a href="../profile.html"><span>👤</span>Profile</a>
+</footer>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
+import { getFirestore, doc, collection, onSnapshot, runTransaction, serverTimestamp, increment } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
+
+/* ============ CONFIG: EDIT THESE ============ */
+const POINTS_PER_USD = 100;   // must match home.html
+const NGN_RATE       = 1500;  // fixed rate, same as the farm
+const MIN_USD        = 10;    // smallest withdrawal in dollars
+const LOGIN_PAGE     = "../login.html";
+const firebaseConfig = {
+  apiKey:"AIzaSyA2LtEPKS6jU3nIsAj-KV3MoxmUULj_5a8", authDomain:"urgent-cash-76162.firebaseapp.com",
+  projectId:"urgent-cash-76162", storageBucket:"urgent-cash-76162.firebasestorage.app",
+  messagingSenderId:"1000483783652", appId:"1:1000483783652:web:f4406e7adb5016b5167df1", measurementId:"G-PN610M8757"
+};
+/* ============================================ */
+
+const app = initializeApp(firebaseConfig), auth = getAuth(app), db = getFirestore(app);
+const $ = id => document.getElementById(id);
+const setMsg = (t, k) => { $("msg").textContent = t || ""; $("msg").className = "msg" + (k ? " " + k : ""); };
+const usd = v => "$" + v.toLocaleString("en-US", { minimumFractionDigits:2, maximumFractionDigits:2 });
+const ngn = v => "₦" + v.toLocaleString("en-NG", { minimumFractionDigits:2, maximumFractionDigits:2 });
+let user = null, balPts = 0;
+
+function updateConv(){
+  const a = parseFloat($("amt").value);
+  $("conv").textContent = a > 0 ? "About " + ngn(a * NGN_RATE) + " (minimum " + usd(MIN_USD) + ")" : "Minimum withdrawal is " + usd(MIN_USD);
+}
+$("amt").oninput = updateConv; updateConv();
+$("maxBtn").onclick = () => { $("amt").value = (Math.floor(balPts) / POINTS_PER_USD).toFixed(2); updateConv(); };
+
+$("sendBtn").onclick = async () => {
+  setMsg("");
+  const amountUsd = Math.round(parseFloat($("amt").value) * 100) / 100;
+  const bank = $("bank").value.trim(), num = $("num").value.trim(), aname = $("aname").value.trim();
+  if (!(amountUsd > 0)) return setMsg("Enter an amount.", "err");
+  if (amountUsd < MIN_USD) return setMsg("The minimum withdrawal is " + usd(MIN_USD) + ".", "err");
+  if (bank.length < 2 || aname.length < 2) return setMsg("Enter the bank name and account name.", "err");
+  if (!/^\d{6,20}$/.test(num)) return setMsg("Enter a valid account number (digits only).", "err");
+  const pts = Math.round(amountUsd * POINTS_PER_USD);
+  $("sendBtn").disabled = true;
+  try {
+    const uref = doc(db, "users", user.uid), rref = doc(collection(db, "walletRequests"));
+    await runTransaction(db, async tx => {
+      const snap = await tx.get(uref);
+      const have = (snap.exists() && snap.data().state && snap.data().state.pts) || 0;
+      if (have < pts) throw new Error("Your balance is too low for that amount.");
+      tx.update(uref, { "state.pts":increment(-pts) });
+      tx.set(rref, {
+        uid:user.uid, email:user.email || "", type:"withdraw", status:"pending",
+        amountUsd, points:pts, bank, accountNumber:num, accountName:aname, createdAt:serverTimestamp()
+      });
+    });
+    setMsg("Withdrawal requested. It shows as pending until it is paid.", "ok");
+    $("amt").value = ""; updateConv();
+  } catch (e) {
+    console.error(e);
+    setMsg(e.message && e.message.indexOf("balance") > -1 ? e.message : "Could not submit. Check your connection and try again.", "err");
+  }
+  $("sendBtn").disabled = false;
+};
+
+onAuthStateChanged(auth, u => {
+  if (!u) { location.replace(LOGIN_PAGE); return; }
+  user = u;
+  onSnapshot(doc(db, "users", u.uid), snap => {
+    balPts = (snap.exists() && snap.data().state && snap.data().state.pts) || 0;
+    $("avail").textContent = usd(balPts / POINTS_PER_USD);
+  });
+  $("loading").classList.add("hidden"); $("main").classList.remove("hidden");
+});
+</script>
+</body>
+</html>
  
