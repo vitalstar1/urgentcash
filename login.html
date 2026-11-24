@@ -1,8 +1,452 @@
-l<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sign in | Urgent Cash</title><style>
-*{box-sizing:border-box}body{margin:0;min-height:100vh;background:linear-gradient(140deg,#f4f8ff,#e7f1ff);color:#15263b;font-family:system-ui,Arial;display:grid;place-items:center;padding:20px}.card{width:min(100%,440px);padding:28px;border:1px solid #d5e3f3;background:#ffffff;border-radius:22px}h1{color:#1678c8;margin:0 0 8px}p{color:#52677f}label{display:block;margin:14px 0 6px;font-size:.9rem}input{width:100%;padding:13px;border:1px solid #315879;border-radius:11px;background:#091b2c;color:#fff;font-size:1rem}button{width:100%;margin-top:20px;padding:14px;border:0;border-radius:12px;background:#1685dc;color:#ffffff;font-weight:800;font-size:1rem}a{color:#1678c8}.msg{min-height:1.3em;color:#ffca8a;margin-top:12px}
-</style></head><body><main class="card"><h1>Welcome back</h1><p>Sign in to Urgent Cash</p><form id="form"><label for="email">Email address</label><input id="email" type="email" autocomplete="email" required><label for="password">Password</label><input id="password" type="password" autocomplete="current-password" required><button id="submit">Sign in</button></form><div class="msg" id="msg" role="status"></div><p>New here? <a href="register.html">Create an account</a></p><p><a href="index.html">← Home</a></p></main>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#f3f7fd">
+<title>Sign In | Urgent Cash</title>
+
+<style>
+:root{
+  color-scheme:light dark;
+  --primary:#1678e8;
+  --primary-hover:#0c60c5;
+  --bg:#f3f7fd;
+  --surface:#ffffff;
+  --surface-soft:#f8fbff;
+  --text:#172b45;
+  --muted:#708198;
+  --border:#dce6f2;
+  --danger:#d9364f;
+  --success:#168550;
+  --shadow:0 16px 50px rgba(35,83,140,.09);
+}
+
+@media(prefers-color-scheme:dark){
+  :root{
+    --primary:#69aaff;
+    --primary-hover:#8bbaff;
+    --bg:#12161e;
+    --surface:#1b212c;
+    --surface-soft:#222b38;
+    --text:#edf3fc;
+    --muted:#a1afc3;
+    --border:#344154;
+    --danger:#ff7186;
+    --success:#54d695;
+    --shadow:0 16px 50px rgba(0,0,0,.25);
+  }
+}
+
+*{box-sizing:border-box}
+
+body{
+  margin:0;
+  min-height:100vh;
+  padding:24px 16px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:var(--bg);
+  color:var(--text);
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  transition:background .2s,color .2s;
+}
+
+.card{
+  width:100%;
+  max-width:450px;
+  padding:30px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:25px;
+  box-shadow:var(--shadow);
+}
+
+.brand{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  margin-bottom:28px;
+}
+
+.brand-icon{
+  width:48px;
+  height:48px;
+  display:grid;
+  place-items:center;
+  border-radius:15px;
+  background:linear-gradient(135deg,#1789f7,#0862ce);
+  color:#fff;
+  font-weight:900;
+  font-size:21px;
+}
+
+.brand-name{
+  font-weight:800;
+  font-size:19px;
+  letter-spacing:-.5px;
+}
+
+.brand-tag{
+  color:var(--muted);
+  font-size:12px;
+  margin-top:2px;
+}
+
+h1{
+  margin:0;
+  font-size:29px;
+  letter-spacing:-1px;
+}
+
+.subtitle{
+  color:var(--muted);
+  margin:8px 0 25px;
+  font-size:14px;
+  line-height:1.6;
+}
+
+.field{margin-bottom:18px}
+
+label{
+  display:block;
+  margin-bottom:8px;
+  font-size:14px;
+  font-weight:650;
+}
+
+.input-wrap{position:relative}
+
+input{
+  width:100%;
+  height:52px;
+  padding:0 14px;
+  border:1px solid var(--border);
+  border-radius:12px;
+  background:var(--surface-soft);
+  color:var(--text);
+  font-size:15px;
+  outline:none;
+  transition:.2s;
+}
+
+input:focus{
+  border-color:var(--primary);
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--primary) 15%,transparent);
+  background:var(--surface);
+}
+
+input::placeholder{color:var(--muted)}
+
+.password-input{padding-right:78px}
+
+.toggle-password{
+  position:absolute;
+  right:10px;
+  top:50%;
+  transform:translateY(-50%);
+  border:0;
+  background:transparent;
+  color:var(--primary);
+  font-size:12px;
+  font-weight:750;
+  cursor:pointer;
+  padding:8px;
+}
+
+.forgot-row{
+  display:flex;
+  justify-content:flex-end;
+  margin-top:-5px;
+  margin-bottom:20px;
+}
+
+.forgot-link{
+  font-size:13px;
+  color:var(--primary);
+  text-decoration:none;
+  font-weight:650;
+}
+
+.forgot-link:hover{text-decoration:underline}
+
+.primary-btn{
+  width:100%;
+  height:53px;
+  border:0;
+  border-radius:13px;
+  background:var(--primary);
+  color:#fff;
+  font-weight:800;
+  font-size:15px;
+  cursor:pointer;
+  transition:.2s;
+}
+
+.primary-btn:hover{
+  background:var(--primary-hover);
+  transform:translateY(-1px);
+}
+
+.primary-btn:disabled{
+  opacity:.65;
+  cursor:not-allowed;
+  transform:none;
+}
+
+.message{
+  display:none;
+  padding:12px 14px;
+  margin-top:16px;
+  border-radius:12px;
+  font-size:13px;
+  line-height:1.5;
+}
+
+.message.error{
+  display:block;
+  background:color-mix(in srgb,var(--danger) 10%,var(--surface));
+  color:var(--danger);
+  border:1px solid color-mix(in srgb,var(--danger) 30%,var(--border));
+}
+
+.message.success{
+  display:block;
+  background:color-mix(in srgb,var(--success) 10%,var(--surface));
+  color:var(--success);
+  border:1px solid color-mix(in srgb,var(--success) 30%,var(--border));
+}
+
+.divider{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  margin:23px 0;
+  color:var(--muted);
+  font-size:12px;
+}
+
+.divider::before,.divider::after{
+  content:"";
+  flex:1;
+  height:1px;
+  background:var(--border);
+}
+
+.footer{
+  text-align:center;
+  font-size:14px;
+  color:var(--muted);
+  margin-top:20px;
+}
+
+.footer a,.home-link{
+  color:var(--primary);
+  font-weight:700;
+  text-decoration:none;
+}
+
+.footer a:hover,.home-link:hover{text-decoration:underline}
+
+.home{
+  text-align:center;
+  margin-top:20px;
+  font-size:13px;
+}
+
+@media(max-width:420px){
+  body{padding:14px}
+  .card{padding:23px 19px;border-radius:20px}
+  h1{font-size:26px}
+}
+
+button:focus-visible,a:focus-visible,input:focus-visible{
+  outline:2px solid var(--primary);
+  outline-offset:3px;
+}
+</style>
+</head>
+
+<body>
+<main class="card">
+
+  <div class="brand">
+    <div class="brand-icon">U</div>
+    <div>
+      <div class="brand-name">Urgent Cash</div>
+      <div class="brand-tag">Your account, your access</div>
+    </div>
+  </div>
+
+  <h1>Welcome back</h1>
+  <p class="subtitle">Sign in to your Urgent Cash account.</p>
+
+  <form id="loginForm">
+
+    <div class="field">
+      <label for="email">Email address</label>
+      <input
+        id="email"
+        type="email"
+        placeholder="you@example.com"
+        autocomplete="email"
+        maxlength="254"
+        required
+      >
+    </div>
+
+    <div class="field">
+      <label for="password">Password</label>
+      <div class="input-wrap">
+        <input
+          id="password"
+          class="password-input"
+          type="password"
+          placeholder="Enter your password"
+          autocomplete="current-password"
+          required
+        >
+        <button type="button" class="toggle-password" id="togglePassword">
+          Show
+        </button>
+      </div>
+    </div>
+
+    <div class="forgot-row">
+      <a href="#" class="forgot-link" id="forgotPassword">Forgot password?</a>
+    </div>
+
+    <button class="primary-btn" id="submitBtn" type="submit">
+      Sign in
+    </button>
+
+  </form>
+
+  <div class="message" id="message" role="status" aria-live="polite"></div>
+
+  <div class="divider">New to Urgent Cash?</div>
+
+  <div class="footer">
+    <a href="register.html">Create an account</a>
+  </div>
+
+  <div class="home">
+    <a class="home-link" href="index.html">← Back to home</a>
+  </div>
+
+</main>
+
 <script type="module">
-import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js';import {getAuth,signInWithEmailAndPassword} from 'https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js';
-const firebaseConfig={apiKey:'AIzaSyA2LtEPKS6jU3nIsAj-KV3MoxmUULj_5a8',authDomain:'urgent-cash-76162.firebaseapp.com',projectId:'urgent-cash-76162',storageBucket:'urgent-cash-76162.firebasestorage.app',messagingSenderId:'1000483783652',appId:'1:1000483783652:web:f4406e7adb5016b5167df1',measurementId:'G-PN610M8757'};const auth=getAuth(initializeApp(firebaseConfig));const form=document.querySelector('#form'),msg=document.querySelector('#msg'),btn=document.querySelector('#submit');
-form.addEventListener('submit',async e=>{e.preventDefault();btn.disabled=true;btn.textContent='Signing in…';try{await signInWithEmailAndPassword(auth,document.querySelector('#email').value.trim(),document.querySelector('#password').value);location.href='dashboard.html';}catch(err){msg.textContent=err.code==='auth/invalid-credential'?'Email or password is incorrect.':err.code==='auth/too-many-requests'?'Too many attempts. Try again later.':err.message;}finally{btn.disabled=false;btn.textContent='Sign in';}});
-</script></body></html>
+import {initializeApp} from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
+
+import {
+  getAuth,
+  signInWithEmailAndPassword,
+  sendPasswordResetEmail
+} from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
+
+const firebaseConfig={
+  apiKey:"AIzaSyA2LtEPKS6jU3nIsAj-KV3MoxmUULj_5a8",
+  authDomain:"urgent-cash-76162.firebaseapp.com",
+  projectId:"urgent-cash-76162",
+  storageBucket:"urgent-cash-76162.firebasestorage.app",
+  messagingSenderId:"1000483783652",
+  appId:"1:1000483783652:web:f4406e7adb5016b5167df1",
+  measurementId:"G-PN610M8757"
+};
+
+const app=initializeApp(firebaseConfig);
+const auth=getAuth(app);
+
+const form=document.getElementById("loginForm");
+const emailInput=document.getElementById("email");
+const passwordInput=document.getElementById("password");
+const submitBtn=document.getElementById("submitBtn");
+const message=document.getElementElementById?.("message") || document.getElementById("message");
+
+// Password visibility
+document.getElementById("togglePassword").addEventListener("click",()=>{
+  const button=document.getElementById("togglePassword");
+  const visible=passwordInput.type==="password";
+  passwordInput.type=visible?"text":"password";
+  button.textContent=visible?"Hide":"Show";
+});
+
+function showMessage(text,type="error"){
+  message.className="message "+type;
+  message.textContent=text;
+}
+
+function friendlyError(code){
+  const errors={
+    "auth/invalid-credential":"Email or password is incorrect.",
+    "auth/invalid-email":"Please enter a valid email address.",
+    "auth/user-not-found":"No account was found for this email.",
+    "auth/wrong-password":"Incorrect password. Try again.",
+    "auth/too-many-requests":"Too many attempts. Please wait and try again.",
+    "auth/network-request-failed":"Connection failed. Check your internet connection.",
+    "auth/user-disabled":"This account is currently disabled.",
+    "auth/operation-not-allowed":"Email/password sign-in is not enabled in Firebase.",
+    "auth/invalid-api-key":"Firebase configuration error."
+  };
+
+  return errors[code]||"Sign-in failed. Please try again.";
+}
+
+// Login
+form.addEventListener("submit",async event=>{
+  event.preventDefault();
+
+  const email=emailInput.value.trim().toLowerCase();
+  const password=passwordInput.value;
+
+  message.className="message";
+  message.textContent="";
+
+  submitBtn.disabled=true;
+  submitBtn.textContent="Signing in…";
+
+  try{
+    await signInWithEmailAndPassword(auth,email,password);
+
+    showMessage("Signed in successfully. Redirecting…","success");
+    window.location.replace("dashboard.html");
+
+  }catch(error){
+    showMessage(friendlyError(error.code));
+  }finally{
+    submitBtn.disabled=false;
+    submitBtn.textContent="Sign in";
+  }
+});
+
+// Password reset
+document.getElementById("forgotPassword").addEventListener("click",async event=>{
+  event.preventDefault();
+
+  const email=emailInput.value.trim().toLowerCase();
+
+  if(!email){
+    showMessage("Enter your email address first, then tap Forgot password.");
+    emailInput.focus();
+    return;
+  }
+
+  try{
+    await sendPasswordResetEmail(auth,email);
+    showMessage("If an account matches this email, a password reset email will be sent. Check your inbox.","success");
+  }catch(error){
+    if(error.code==="auth/invalid-email"){
+      showMessage("Please enter a valid email address.");
+    }else if(error.code==="auth/too-many-requests"){
+      showMessage("Too many attempts. Please wait before trying again.");
+    }else{
+      showMessage("Unable to send reset email right now. Please try again later.");
+    }
+  }
+});
+</script>
+</body>
+</html>
