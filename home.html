@@ -462,8 +462,36 @@ document.addEventListener("visibilitychange", () => { if (document.hidden) pushC
 const LOGIN_PAGE = "login.html";   // must be on the SAME domain as this page
 let gated = false;
 
-function goLogin(reason){
+const DEBUG_GATE = true;   // shows WHY it is redirecting instead of redirecting; set false when fixed
+function gateReport(code, reason){
+  let keys = [];
+  try { keys = Object.keys(localStorage).filter(k => k.indexOf("firebase:authUser:") === 0); } catch(e) { keys = ["(localStorage blocked)"]; }
+  let sess = [];
+  try { sess = Object.keys(sessionStorage).filter(k => k.indexOf("firebase:authUser:") === 0); } catch(e) {}
+  const lines = [
+    "Reason code: " + code + (reason ? " (" + reason + ")" : ""),
+    "This page: " + location.href,
+    "Login page: " + new URL(LOGIN_PAGE, location.href).href,
+    "Same origin as login page: " + (new URL(LOGIN_PAGE, location.href).origin === location.origin),
+    "This page's apiKey: " + (FIREBASE_CONFIG.apiKey || "").slice(0, 8) + "...",
+    "Saved sign-ins in localStorage: " + (keys.length ? keys.join(" | ") : "none"),
+    "Saved sign-ins in sessionStorage: " + (sess.length ? sess.join(" | ") : "none"),
+    "auth.currentUser: " + (auth && auth.currentUser ? auth.currentUser.email || auth.currentUser.uid : "null")
+  ];
+  console.warn("[gate]", lines.join("\n"));
+  const d = document.createElement("div");
+  d.style.cssText = "position:fixed;inset:0;z-index:99999;background:#111;color:#eee;padding:16px;overflow:auto;font:13px/1.5 monospace;white-space:pre-wrap";
+  d.textContent = "ACCESS GATE DEBUG\n\n" + lines.join("\n") + "\n\n";
+  const b = document.createElement("button");
+  b.textContent = "Continue to login page"; b.style.cssText = "padding:10px 14px;font-size:14px";
+  b.onclick = () => window.location.replace(LOGIN_PAGE);
+  d.appendChild(b);
+  document.body.appendChild(d); document.body.style.visibility = "visible";
+}
+
+function goLogin(reason, code){
   gated = true; user = null; synced = false;
+  if (DEBUG_GATE) { gateReport(code || "no-user", reason); return; }
   // Loop guard: if we keep bouncing between pages, stop and show the in-page sign-in instead.
   let n = 0;
   try { n = +sessionStorage.getItem("uc_bounce") || 0; sessionStorage.setItem("uc_bounce", String(n + 1)); } catch(e) {}
@@ -488,25 +516,25 @@ async function verifyAccount(u){
   try { await u.reload(); await u.getIdToken(true); return { ok:true }; }
   catch(e){
     const c = e && e.code || "";
-    if (c === "auth/user-disabled") return { ok:false, msg:"This account has been disabled." };
+    if (c === "auth/user-disabled") return { ok:false, msg:"This account has been disabled.", code:c };
     if (["auth/user-not-found","auth/user-token-expired","auth/invalid-user-token"].includes(c))
-      return { ok:false, msg:"Your session expired. Please sign in again." };
+      return { ok:false, msg:"Your session expired. Please sign in again.", code:c };
     console.warn("Account check skipped:", c);   // network error etc. -> don't lock out
     return { ok:true };
   }
 }
 
 if (!auth) {
-  addEventListener("DOMContentLoaded", () => goLogin("Sign-in is unavailable. Check your connection."));
+  addEventListener("DOMContentLoaded", () => goLogin("Firebase did not initialise", "init-failed"));
 } else auth.onAuthStateChanged(async u => {
   if (!u) {
-    if (await confirmSignedOut()) goLogin();
+    if (await confirmSignedOut()) goLogin("Firebase reports nobody signed in on this origin", "no-user");
     return;
   }
   const chk = await verifyAccount(u);
   if (!chk.ok) {
     try { await auth.signOut(); } catch(e) {}
-    goLogin(chk.msg);
+    goLogin(chk.msg, chk.code || "account-check-failed");
     return;
   }
   try { sessionStorage.removeItem("uc_bounce"); } catch(e) {}
