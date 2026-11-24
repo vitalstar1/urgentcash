@@ -49,30 +49,24 @@
     </div>
 
     <div id="stepPay" class="card">
-      <h2>1. Make the deposit</h2>
-      <div class="row"><span>Amount</span><b id="amt"></b></div>
-      <p class="note" id="payDetails"></p>
-      <div class="row"><span>Payment reference</span><b id="uid"></b></div>
-      <button class="alt" onclick="copyUid()">Copy reference</button>
-      <p class="note">Put the reference in the payment narration so we can match it to your account.</p>
+      <h2>1. Pay the verification fee</h2>
+      <div class="row"><span>Fee (one time)</span><b id="amt"></b></div>
+      <p class="note">Lasts for lifetime. Pay on Paystack, then come back here.</p>
+      <a class="btn gold" id="payLink" target="_blank" rel="noopener noreferrer">Pay on Paystack</a>
     </div>
 
     <div id="stepForm" class="card">
       <h2>2. Tell us you paid</h2>
-      <label for="fName">Name on the payment</label>
-      <input id="fName" maxlength="80" autocomplete="name">
-      <label for="fAmt">Amount you sent (₦)</label>
-      <input id="fAmt" type="number" inputmode="decimal" min="0">
-      <label for="fNote">Note or transaction ID (optional)</label>
-      <input id="fNote" maxlength="120">
+      <label for="fRef">Paystack reference or email used to pay</label>
+      <input id="fRef" maxlength="120" placeholder="Reference on your Paystack receipt">
       <p class="msg" id="msg"></p>
-      <button class="gold" id="submit" onclick="submitReq()">Submit for verification</button>
-      <p class="note">We confirm deposits manually. Verification is switched on once your payment is received.</p>
+      <button id="submit" onclick="submitReq()">I have paid</button>
+      <p class="note">Your account is verified once your payment is confirmed.</p>
     </div>
 
     <div id="stepWait" class="card hidden">
       <h2>Request received</h2>
-      <p class="sub">We are checking your payment. Come back and press the button once you've waited a while.</p>
+      <p class="sub">We are confirming your payment. Check back shortly.</p>
       <button onclick="recheck()">Check status</button>
     </div>
 
@@ -100,7 +94,7 @@
 <script>
 /* ============ CONFIG: keep in sync with the farm page ============ */
 const VERIFY_DEPOSIT_NGN = 5800;
-const PAY_DETAILS = "Add your payment details here (bank name, account number, account name).";
+const VERIFY_LINK = "https://paystack.shop/pay/wftws-3qga";   // same Paystack link as the wallet page
 const CHAT_LINK = "https://chat.whatsapp.com/YOUR_LINK_HERE";   // same link as the farm page
 const LOGIN_PAGE = "login.html";
 const FARM_PAGE = "index.html";          // change if your farm page has another file name
@@ -131,46 +125,38 @@ function show(state){            // "none" | "pending" | "verified"
   $("stepDone").classList.toggle("hidden", !v);
 }
 async function load(){
-  const [u, r] = await Promise.all([
-    db.collection("users").doc(user.uid).get(),
-    db.collection("verifyRequests").doc(user.uid).get()
+  const [v, q] = await Promise.all([
+    db.collection("verifications").doc(user.uid).get(),
+    db.collection("walletRequests").where("uid", "==", user.uid).get()
   ]);
-  const verified = !!(u.exists && u.data().verified === true);
-  show(verified ? "verified" : (r.exists && r.data().status === "pending") ? "pending" : "none");
+  const pending = q.docs.some(d => d.data().type === "verify" && d.data().status === "pending");
+  show(v.exists ? "verified" : pending ? "pending" : "none");
 }
 async function recheck(){
   try { await load(); } catch(e) { setMsg("Could not check. Check your connection."); }
 }
-function copyUid(){
-  navigator.clipboard.writeText(user.uid).then(() => setMsg("Reference copied", true), () => setMsg("Copy failed. Select the reference and copy it."));
-}
 async function submitReq(){
-  const name = $("fName").value.trim(), amount = parseFloat($("fAmt").value), note = $("fNote").value.trim();
-  if (!name) return setMsg("Enter the name on the payment.");
-  if (!(amount > 0)) return setMsg("Enter the amount you sent.");
+  const ref = $("fRef").value.trim();
+  if (ref.length < 2) return setMsg("Enter the Paystack reference or the email you paid with.");
   $("submit").disabled = true; setMsg("");
   try {
-    await db.collection("verifyRequests").doc(user.uid).set({
-      name, amount, note, status:"pending",
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    await db.collection("walletRequests").add({
+      uid:user.uid, email:user.email || "", type:"verify", status:"pending",
+      priceNgn:VERIFY_DEPOSIT_NGN, reference:ref, createdAt:firebase.firestore.FieldValue.serverTimestamp()
     });
     show("pending");
-  } catch(e) {
-    console.error(e);
-    setMsg("Could not submit. Please try again.");
-  }
+  } catch(e) { console.error(e); setMsg("Could not submit. Please try again."); }
   $("submit").disabled = false;
 }
 
 $("amt").textContent = "₦" + VERIFY_DEPOSIT_NGN.toLocaleString("en-NG");
-$("payDetails").textContent = PAY_DETAILS;
+$("payLink").href = VERIFY_LINK;
 document.querySelector('a.btn.alt').href = FARM_PAGE; $("homeLink").href = FARM_PAGE;
 
 auth.onAuthStateChanged(async u => {
   if (!u) { try { if (auth.authStateReady) await auth.authStateReady(); } catch(e) {} if (!auth.currentUser) location.replace(LOGIN_PAGE); return; }
   user = u;
   $("who").textContent = u.email || u.displayName || "Player";
-  $("uid").textContent = u.uid;
   try { await load(); } catch(e) { console.error(e); setMsg("Could not load your status. Refresh to try again."); show("none"); }
   $("load").classList.add("hidden"); $("main").classList.remove("hidden");
 });
