@@ -10,6 +10,7 @@
 <link rel="preload" as="script" href="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js" fetchpriority="low">
 <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
 <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
+<meta name="color-scheme" content="light dark">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>UrgentCash Farm</title>
 <style>
@@ -46,8 +47,16 @@
     #toast { top:96px; }
   }
   button:disabled { opacity:.4; cursor:not-allowed; }
-  #hint { position:fixed; bottom:16px; left:50%; transform:translateX(-50%); background:rgba(10,20,15,.7); padding:8px 14px; border-radius:20px; font-size:.8rem; color:#fff; z-index:4; white-space:nowrap; pointer-events:none; }
-  #panel { position:fixed; bottom:12px; left:50%; transform:translateX(-50%); width:min(430px,94%); background:var(--card); border:1px solid var(--line); border-radius:16px; padding:14px; z-index:8; backdrop-filter:blur(6px); max-height:62vh; overflow-y:auto; }
+  #hint { position:fixed; bottom:calc(66px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%); background:rgba(10,20,15,.7); padding:8px 14px; border-radius:20px; font-size:.8rem; color:#fff; z-index:4; white-space:nowrap; pointer-events:none; }
+  #panel { position:fixed; bottom:calc(62px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%); width:min(430px,94%); background:var(--card); border:1px solid var(--line); border-radius:16px; padding:14px; z-index:8; backdrop-filter:blur(6px); max-height:52vh; overflow-y:auto; }
+  footer { --fbg:#ffffff; --ftx:#4a4a4a; --fln:rgba(0,0,0,.12); --fon:#0a9d68;
+    position:fixed; left:0; right:0; bottom:0; z-index:9; display:flex; gap:0; padding:0 0 env(safe-area-inset-bottom);
+    background:var(--fbg); border-top:1px solid var(--fln); }
+  @media (prefers-color-scheme:dark) { footer { --fbg:#1f1f1f; --ftx:#c9c9c9; --fln:rgba(255,255,255,.1); --fon:#2ee59d; } }
+  footer .fb { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; padding:9px 4px 8px; border:0; border-radius:0; background:transparent; color:var(--ftx); text-decoration:none; font-size:.75rem; font-weight:500; cursor:pointer; }
+  footer .fb span { font-size:1.4rem; line-height:1; }
+  footer .fb.on { color:var(--fon); }
+  footer .fb:active { background:var(--fln); }
   .hidden { display:none !important; }
   #panel h3 { font-size:1rem; margin-bottom:2px; } #panel .x { position:absolute; top:8px; right:8px; padding:6px 10px; }
   .sub { color:var(--mut); font-size:.82rem; margin-bottom:10px; }
@@ -92,11 +101,16 @@
   <div class="right">
     <a class="pill" id="acctBtn" href="profile.html">👤</a>
     <button class="pill" id="muteBtn" onclick="toggleMute()">🔊</button>
-    <button class="pill" onclick="openWallet()">💼</button>
     <button class="pill" id="curBtn" onclick="nextCurrency()">USD ⇄</button>
     <a class="bal" id="coins" href="wallet.html">$0.00</a>
   </div>
 </header>
+
+<footer>
+  <a class="fb on" href="#" onclick="closePanel();return false"><span>🏠</span>Home</a>
+  <a class="fb" href="wallet.html"><span>💼</span>Wallet</a>
+  <a class="fb" href="profile.html"><span>👤</span>Profile</a>
+</footer>
 
 <div id="hint">Tap a plot · drag to look around · pinch to zoom</div>
 <div id="panel" class="hidden"></div>
