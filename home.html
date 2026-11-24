@@ -2,6 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+<link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
+<link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>UrgentCash Farm</title>
 <style>
@@ -60,16 +64,17 @@
   .tabs { display:flex; gap:6px; margin-bottom:10px; } .tabs button { flex:1; }
   .msg { color:#ff8a80; font-size:.8rem; min-height:1.1em; margin-bottom:6px; }
   .row b { word-break:break-all; text-align:right; padding-left:12px; }
-  #loader { position:fixed; inset:0; z-index:90; background:#0e1512; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; text-align:center; padding:24px; transition:opacity .3s; }
+  #loader { position:fixed; inset:0; z-index:90; background:transparent; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; text-align:center; padding:24px; transition:opacity .3s; }
   #loader.done { opacity:0; pointer-events:none; }
-  #loader .spin { width:52px; height:52px; border-radius:50%; border:5px solid rgba(46,229,157,.18); border-top-color:#2ee59d; animation:ldspin .9s linear infinite; }
-  #loader .ltxt { color:#eaf5ef; font-weight:700; font-size:1rem; }
-  #loader .lsub { color:#9bb5a8; font-size:.85rem; min-height:1.2em; }
+  #loader .spin { width:52px; height:52px; border-radius:50%; border:5px solid rgba(14,21,18,.15); border-top-color:#0e1512; animation:ldspin .9s linear infinite; }
+  #loader .ltxt { color:#0e1512; font-weight:700; font-size:1rem; }
+  #loader .lsub { color:#24404f; font-size:.85rem; min-height:1.2em; }
+  body.loading > *:not(#loader):not(script) { visibility:hidden !important; }
   @keyframes ldspin { to { transform:rotate(360deg); } }
   #err { position:fixed; inset:0; background:#0e1512; display:none; align-items:center; justify-content:center; text-align:center; padding:30px; z-index:100; line-height:1.5; }
 </style>
 </head>
-<body>
+<body class="loading">
 <div id="loader" role="status" aria-live="polite">
   <div class="spin"></div>
   <div class="ltxt">Loading your farm…</div>
@@ -471,11 +476,11 @@ let gated = false;
 function hideLoader(){
   const l = document.getElementById("loader"); if (!l) return;
   clearTimeout(window.__ldSlow);
-  l.classList.add("done"); setTimeout(() => l.remove(), 350);
+  document.body.classList.remove("loading"); l.classList.add("done"); setTimeout(() => l.remove(), 350);
 }
 window.__ldSlow = setTimeout(() => {
   const t = document.getElementById("lsub"); if (!t) return;
-  t.innerHTML = 'Taking longer than usual… <a href="" onclick="location.reload();return false" style="color:#2ee59d">Retry</a>';
+  t.innerHTML = 'Taking longer than usual… <a href="" onclick="location.reload();return false" style="color:#0b5d3f;font-weight:700">Retry</a>';
 }, 12000);
 const DEBUG_GATE = false;   // shows WHY it is redirecting instead of redirecting; set false when fixed
 function gateReport(code, reason){
@@ -521,14 +526,13 @@ function goLogin(reason, code){
 
 // Is this visitor truly signed out? Let Firebase finish restoring/finishing any sign-in first.
 async function confirmSignedOut(){
-  try { await auth.getRedirectResult(); } catch(e) {}
-  await new Promise(r => setTimeout(r, 800));
+  try { if (auth.authStateReady) await auth.authStateReady(); } catch(e) {}
   return !auth.currentUser;
 }
 
 // Does Firebase still accept this account? (catches disabled, deleted, or revoked accounts)
 async function verifyAccount(u){
-  try { await u.reload(); await u.getIdToken(true); return { ok:true }; }
+  try { await u.reload(); return { ok:true }; }
   catch(e){
     const c = e && e.code || "";
     if (c === "auth/user-disabled") return { ok:false, msg:"This account has been disabled.", code:c };
@@ -546,7 +550,12 @@ if (!auth) {
     if (await confirmSignedOut()) goLogin("Firebase reports nobody signed in on this origin", "no-user");
     return;
   }
-  const chk = await verifyAccount(u);
+  user = u; synced = false;
+  // Run the account check and the farm download at the same time.
+  const chkP = verifyAccount(u);
+  let snap = null, loadErr = null;
+  const snapP = userDoc().get().then(x => { snap = x; }).catch(e => { loadErr = e; });
+  const chk = await chkP;
   if (!chk.ok) {
     try { await auth.signOut(); } catch(e) {}
     goLogin(chk.msg, chk.code || "account-check-failed");
@@ -554,9 +563,8 @@ if (!auth) {
   }
   try { sessionStorage.removeItem("uc_bounce"); } catch(e) {}
   gated = false;
-  user = u; synced = false;
-  try {
-    const snap = await userDoc().get();
+  await snapP;
+  if (!loadErr) {
     if (snap.exists && snap.data().state) {
       S = migrate(Object.assign(fresh(), snap.data().state));
     } else {
@@ -564,8 +572,8 @@ if (!auth) {
       S = load(GUEST_KEY) || S || fresh();
     }
     synced = true;
-  } catch(e) {
-    console.error(e); S = load(GUEST_KEY+"_"+u.uid) || S;  // offline fallback; don't overwrite cloud until loaded
+  } else {
+    console.error(loadErr); S = load(GUEST_KEY+"_"+u.uid) || S;  // offline fallback; don't overwrite cloud until loaded
     synced = false;
     toast("Could not reach your saved farm");
   }
