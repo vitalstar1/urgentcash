@@ -42,18 +42,16 @@ body{margin:0;min-height:100vh;font-family:system-ui,-apple-system,"Segoe UI",Ro
 .badge{display:inline-block;min-width:20px;padding:1px 6px;border-radius:99px;background:var(--bad);color:#fff;font-size:.72rem;margin-left:4px}
 input.search{width:100%;font:inherit;padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:var(--soft);color:var(--text)}
 .list{display:grid;gap:10px}
-.req{background:var(--soft);border:1px solid var(--border);border-radius:14px;padding:12px;font-size:.88rem}
+.req{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px;font-size:.88rem;box-shadow:0 4px 14px rgba(0,0,0,.05)}
 .req .row{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
 .req h3{margin:0;font-size:.95rem;word-break:break-all}
 .req small{color:var(--muted);display:block;margin-top:2px}
 .amt{font-weight:900;font-size:1.05rem;text-align:right;white-space:nowrap}
 .amt small{font-weight:600}
-.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;margin:10px 0;font-size:.85rem}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;margin:10px 0;font-size:.85rem;align-items:center}
 .kv dt{color:var(--muted)} .kv dd{margin:0;word-break:break-all}
-.pics{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
-.pics a img{width:96px;height:96px;object-fit:cover;border-radius:10px;border:1px solid var(--border)}
 .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
-.st{font-size:.72rem;font-weight:800;text-transform:uppercase}
+.st{display:block;font-size:.72rem;font-weight:800;text-transform:uppercase}
 .st.pending{color:var(--gold)} .st.approved{color:var(--good)} .st.rejected{color:var(--bad)}
 .reason{color:var(--bad);font-size:.8rem;margin-top:6px}
 .center{text-align:center;color:var(--muted);padding:40px 0}
@@ -87,7 +85,7 @@ input.search{width:100%;font:inherit;padding:10px 12px;border-radius:12px;border
         <button data-f="approved" type="button">Approved</button>
         <button data-f="rejected" type="button">Rejected</button>
       </div>
-      <input class="search" id="q" type="search" placeholder="Search name, email, bank, account…">
+      <input class="search" id="q" type="search" placeholder="Search email, bank, account, reference…">
     </section>
 
     <div class="list" id="list"></div>
@@ -99,20 +97,14 @@ input.search{width:100%;font:inherit;padding:10px 12px;border-radius:12px;border
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
-import { getFirestore, doc, getDoc, onSnapshot, collection, query, where, runTransaction, serverTimestamp }
+import { getFirestore, doc, onSnapshot, collection, query, where, runTransaction, serverTimestamp }
   from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
 
 /* ============ CONFIG ============ */
-const POINTS_PER_USD = 100;     // must match home.html / wallet
+const POINTS_PER_USD = 100;
 const NGN_RATE       = 1500;
 const LOGIN_PAGE     = "../login.html";
-const WITHDRAW_COLLECTION = "walletRequests";        // docs with type:"withdraw"
-const VERIFY_COLLECTION   = "verificationRequests";  // change if yours is named differently
-/* When are points removed from the user's balance?
-   "approve" = nothing is deducted when the user requests; admin approval deducts the points.
-   "request" = your withdraw page already deducted the points; rejecting refunds them. */
-const BALANCE_MODE = "approve";
-/* Accounts allowed into this panel (Firebase Auth UIDs). Add more separated by commas. */
+/* Accounts allowed into this panel. Must match isAdmin() in firestore.rules. */
 const ADMIN_UIDS = ["lWAvUYDfukP8tuUqNkmbiwH35hq2"];
 const firebaseConfig = {
   apiKey:"AIzaSyA2LtEPKS6jU3nIsAj-KV3MoxmUULj_5a8", authDomain:"urgent-cash-76162.firebaseapp.com",
@@ -124,74 +116,50 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig), auth = getAuth(app), db = getFirestore(app);
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+const ngn = v => "₦" + Number(v || 0).toLocaleString("en-NG", { maximumFractionDigits:2 });
 const usd = v => "$" + Number(v || 0).toLocaleString("en-US", { minimumFractionDigits:2, maximumFractionDigits:2 });
-const ngn = v => "₦" + Number(v || 0).toLocaleString("en-NG", { minimumFractionDigits:2, maximumFractionDigits:2 });
-const ms = t => t?.toMillis?.() || (typeof t === "number" ? t : 0);
+const ms = t => t?.toMillis?.() || 0;
 const fmtDate = t => ms(t) ? new Date(ms(t)).toLocaleString(undefined, { month:"short", day:"numeric", year:"numeric", hour:"2-digit", minute:"2-digit" }) : "—";
-const isUrl = v => typeof v === "string" && /^https?:\/\//i.test(v);
+const statusOf = r => r.status || "pending";
+const copyBtn = v => v ? ` <button class="btn alt sm" data-copy="${esc(v)}" type="button">Copy</button>` : "";
 
 let me = null, tab = "withdraw", filter = "pending";
-const data = { withdraw: [], verify: [] };
-const names = {}; // uid -> {name,email} cache
+let all = [];
 
 function toast(msg){
   const t = $("toast"); t.textContent = msg; t.classList.remove("hidden");
   clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.add("hidden"), 3500);
 }
 
-async function userInfo(uid){
-  if (!uid || names[uid]) return;
-  names[uid] = { name: "", email: "" };
-  try {
-    const s = await getDoc(doc(db, "users", uid));
-    if (s.exists()) {
-      const d = s.data();
-      names[uid] = { name: d.name || d.fullName || d.displayName || d.username || "", email: d.email || "", verified: !!d.verified };
-      draw();
-    }
-  } catch (e) { /* ignore */ }
-}
-
 /* ---------- rendering ---------- */
-const SKIP = new Set(["uid","type","status","createdAt","reviewedAt","reviewedBy","rejectReason","name","email","fullName","displayName"]);
-
 function card(r){
-  const u = names[r.uid] || {};
-  const who = r.name || r.fullName || u.name || r.email || u.email || r.uid || "Unknown user";
-  const email = r.email || u.email || "";
-  const status = r.status || "pending";
-  let body = "";
-
-  if (tab === "withdraw") {
-    const amtUsd = Number(r.amountUsd || 0);
+  const status = statusOf(r);
+  let body;
+  if (r.type === "withdraw") {
+    const pts = r.points ?? Math.round((r.amountUsd || 0) * POINTS_PER_USD);
     body = `
       <div class="row">
-        <div><h3>${esc(who)}</h3><small>${esc(email)}</small><small>${fmtDate(r.createdAt)}</small></div>
-        <div class="amt">${usd(amtUsd)}<small>${ngn(r.amountNgn || amtUsd * NGN_RATE)}</small><span class="st ${esc(status)}">${esc(status)}</span></div>
+        <div><h3>${esc(r.email || r.uid)}</h3><small>${fmtDate(r.createdAt)}</small></div>
+        <div class="amt">${ngn(r.amountNgn || (r.amountUsd || 0) * NGN_RATE)}<small>${usd(r.amountUsd)}</small><span class="st ${esc(status)}">${esc(status)}</span></div>
       </div>
       <dl class="kv">
         <dt>Bank</dt><dd>${esc(r.bank || "—")}</dd>
-        <dt>Account no.</dt><dd>${esc(r.accountNumber || "—")} ${r.accountNumber ? `<button class="btn alt sm" data-copy="${esc(r.accountNumber)}" type="button">Copy</button>` : ""}</dd>
+        <dt>Account no.</dt><dd>${esc(r.accountNumber || "—")}${copyBtn(r.accountNumber)}</dd>
         <dt>Account name</dt><dd>${esc(r.accountName || "—")}</dd>
-        <dt>Points</dt><dd>${Math.round(amtUsd * POINTS_PER_USD).toLocaleString()}</dd>
-        <dt>User ID</dt><dd>${esc(r.uid || "—")}</dd>
+        <dt>Points</dt><dd>${Number(pts).toLocaleString()}</dd>
+        <dt>User ID</dt><dd>${esc(r.uid)}</dd>
       </dl>`;
   } else {
-    const pics = [], rows = [];
-    for (const [k, v] of Object.entries(r)) {
-      if (k === "id" || SKIP.has(k) || v == null || typeof v === "object") continue;
-      if (isUrl(v)) pics.push(`<a href="${esc(v)}" target="_blank" rel="noopener"><img src="${esc(v)}" alt="${esc(k)}" loading="lazy"></a>`);
-      else rows.push(`<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`);
-    }
     body = `
       <div class="row">
-        <div><h3>${esc(who)}</h3><small>${esc(email)}</small><small>${fmtDate(r.createdAt)}</small></div>
-        <span class="st ${esc(status)}">${esc(status)}</span>
+        <div><h3>${esc(r.email || r.uid)}</h3><small>${fmtDate(r.createdAt)}</small></div>
+        <div class="amt">${ngn(r.priceNgn)}<span class="st ${esc(status)}">${esc(status)}</span></div>
       </div>
-      ${rows.length ? `<dl class="kv">${rows.join("")}<dt>User ID</dt><dd>${esc(r.uid || "—")}</dd></dl>` : ""}
-      ${pics.length ? `<div class="pics">${pics.join("")}</div>` : ""}`;
+      <dl class="kv">
+        <dt>Payment ref.</dt><dd>${esc(r.reference || "—")}${copyBtn(r.reference)}</dd>
+        <dt>User ID</dt><dd>${esc(r.uid)}</dd>
+      </dl>`;
   }
-
   const reason = r.rejectReason ? `<div class="reason">Reason: ${esc(r.rejectReason)}</div>` : "";
   const reviewed = r.reviewedAt ? `<small>Reviewed ${fmtDate(r.reviewedAt)}</small>` : "";
   const actions = status === "pending"
@@ -202,16 +170,16 @@ function card(r){
 }
 
 function draw(){
-  const pW = data.withdraw.filter(r => (r.status || "pending") === "pending").length;
-  const pV = data.verify.filter(r => (r.status || "pending") === "pending").length;
+  const pW = all.filter(r => r.type === "withdraw" && statusOf(r) === "pending").length;
+  const pV = all.filter(r => r.type === "verify" && statusOf(r) === "pending").length;
   $("cW").textContent = pW; $("cV").textContent = pV;
   $("bW").textContent = pW; $("bW").classList.toggle("hidden", !pW);
   $("bV").textContent = pV; $("bV").classList.toggle("hidden", !pV);
 
   const q = $("q").value.trim().toLowerCase();
-  const list = data[tab]
-    .filter(r => (r.status || "pending") === filter)
-    .filter(r => !q || JSON.stringify({ ...r, ...(names[r.uid] || {}) }).toLowerCase().includes(q))
+  const list = all
+    .filter(r => r.type === tab && statusOf(r) === filter)
+    .filter(r => !q || [r.email, r.uid, r.bank, r.accountNumber, r.accountName, r.reference].join(" ").toLowerCase().includes(q))
     // pending: oldest first (fair queue); others: newest first
     .sort((a, b) => filter === "pending" ? ms(a.createdAt) - ms(b.createdAt) : ms(b.createdAt) - ms(a.createdAt));
 
@@ -220,43 +188,26 @@ function draw(){
 }
 
 /* ---------- actions ---------- */
-async function reviewWithdraw(id, approve, reason){
+async function review(id, approve, reason){
   await runTransaction(db, async tx => {
-    const reqRef = doc(db, WITHDRAW_COLLECTION, id);
+    const reqRef = doc(db, "walletRequests", id);
     const reqSnap = await tx.get(reqRef);
     if (!reqSnap.exists()) throw new Error("Request no longer exists.");
     const r = reqSnap.data();
-    if ((r.status || "pending") !== "pending") throw new Error("Already " + r.status + ".");
-    const pts = Math.round(Number(r.amountUsd || 0) * POINTS_PER_USD);
-    const uRef = doc(db, "users", r.uid);
-    const uSnap = await tx.get(uRef);
-    const cur = (uSnap.exists() && uSnap.data().state && uSnap.data().state.pts) || 0;
+    if (statusOf(r) !== "pending") throw new Error("Already " + r.status + ".");
 
-    if (approve && BALANCE_MODE === "approve") {
-      if (cur < pts) throw new Error(`User only has ${cur.toLocaleString()} points; needs ${pts.toLocaleString()}.`);
-      tx.update(uRef, { "state.pts": cur - pts });
+    if (r.type === "withdraw" && !approve) {
+      // Points were deducted when the user requested: give them back,
+      // and clear the 24h limit so they can request again.
+      const uRef = doc(db, "users", r.uid);
+      const uSnap = await tx.get(uRef);
+      const cur = (uSnap.exists() && uSnap.data().state && uSnap.data().state.pts) || 0;
+      tx.update(uRef, { "state.pts": cur + Number(r.points || 0) });
+      tx.delete(doc(db, "withdrawLimits", r.uid));
     }
-    if (!approve && BALANCE_MODE === "request") {
-      tx.update(uRef, { "state.pts": cur + pts }); // refund
+    if (r.type === "verify" && approve) {
+      tx.set(doc(db, "verifications", r.uid), { uid: r.uid, verifiedAt: serverTimestamp() });
     }
-    tx.update(reqRef, {
-      status: approve ? "approved" : "rejected",
-      reviewedAt: serverTimestamp(), reviewedBy: me.uid,
-      ...(reason ? { rejectReason: reason } : {})
-    });
-  });
-}
-
-async function reviewVerify(id, approve, reason){
-  await runTransaction(db, async tx => {
-    const reqRef = doc(db, VERIFY_COLLECTION, id);
-    const reqSnap = await tx.get(reqRef);
-    if (!reqSnap.exists()) throw new Error("Request no longer exists.");
-    const r = reqSnap.data();
-    if ((r.status || "pending") !== "pending") throw new Error("Already " + r.status + ".");
-    tx.set(doc(db, "users", r.uid), {
-      verified: approve, verificationStatus: approve ? "approved" : "rejected", verifiedAt: serverTimestamp()
-    }, { merge: true });
     tx.update(reqRef, {
       status: approve ? "approved" : "rejected",
       reviewedAt: serverTimestamp(), reviewedBy: me.uid,
@@ -267,29 +218,31 @@ async function reviewVerify(id, approve, reason){
 
 $("list").addEventListener("click", async e => {
   const copy = e.target.closest("[data-copy]");
-  if (copy) { navigator.clipboard?.writeText(copy.dataset.copy).then(() => toast("Account number copied")); return; }
+  if (copy) { navigator.clipboard?.writeText(copy.dataset.copy).then(() => toast("Copied")); return; }
 
   const b = e.target.closest("[data-act]"); if (!b) return;
   const approve = b.dataset.act === "approve", id = b.dataset.id;
   let reason = "";
   if (approve) {
     const msg = tab === "withdraw"
-      ? "Approve this withdrawal? Only approve AFTER you have sent the money." + (BALANCE_MODE === "approve" ? " The points will be deducted from the user." : "")
-      : "Approve this verification?";
+      ? "Approve this withdrawal? Only approve AFTER you have sent the money to the user's bank."
+      : "Approve this verification? Only approve after you've confirmed the ₦5,800 payment arrived.";
     if (!confirm(msg)) return;
   } else {
-    reason = prompt("Reason for rejecting (the user may see this):", "");
+    reason = prompt(tab === "withdraw"
+      ? "Reason for rejecting (the points will be refunded to the user):"
+      : "Reason for rejecting:", "");
     if (reason === null) return;
   }
-  b.parentElement.querySelectorAll("button").forEach(x => x.disabled = true);
+  const btns = b.parentElement.querySelectorAll("button");
+  btns.forEach(x => x.disabled = true);
   try {
-    if (tab === "withdraw") await reviewWithdraw(id, approve, reason.trim());
-    else await reviewVerify(id, approve, reason.trim());
+    await review(id, approve, reason.trim());
     toast(approve ? "Approved ✓" : "Rejected");
   } catch (err) {
     console.error(err);
     toast("Failed: " + (err.message || err));
-    b.parentElement.querySelectorAll("button").forEach(x => x.disabled = false);
+    btns.forEach(x => x.disabled = false);
   }
 });
 
@@ -307,15 +260,7 @@ $("q").addEventListener("input", draw);
 $("logout").addEventListener("click", () => signOut(auth).then(() => location.replace(LOGIN_PAGE)));
 
 /* ---------- start ---------- */
-function listen(name, q){
-  onSnapshot(q, snap => {
-    data[name] = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    data[name].forEach(r => userInfo(r.uid));
-    draw();
-  }, err => { console.error(err); toast("Could not load " + name + " requests: " + err.code); });
-}
-
-onAuthStateChanged(auth, async user => {
+onAuthStateChanged(auth, user => {
   if (!user) { location.replace(LOGIN_PAGE); return; }
   me = user;
   $("logout").classList.remove("hidden");
@@ -326,8 +271,10 @@ onAuthStateChanged(auth, async user => {
   }
   $("who").textContent = "Signed in as " + (user.email || user.uid);
   $("gate").classList.add("hidden"); $("main").classList.remove("hidden");
-  listen("withdraw", query(collection(db, WITHDRAW_COLLECTION), where("type", "==", "withdraw")));
-  listen("verify", collection(db, VERIFY_COLLECTION));
+  onSnapshot(query(collection(db, "walletRequests"), where("type", "in", ["withdraw", "verify"])), snap => {
+    all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    draw();
+  }, err => { console.error(err); toast("Could not load requests: " + err.code + " (check your Firestore rules)"); });
 });
 </script>
 </body>
