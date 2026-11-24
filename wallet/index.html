@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -31,7 +31,7 @@ body{margin:0;min-height:100vh;font-family:system-ui,-apple-system,"Segoe UI",Ro
 .balance small{color:var(--muted);font-size:.8rem}
 .balance .big{font-size:2.3rem;font-weight:900;color:var(--gold);letter-spacing:-1px;margin:4px 0}
 .balance .ngn{color:var(--muted);font-size:.95rem;font-weight:600}
-.btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
+.btns{display:grid;grid-template-columns:1fr;gap:10px;margin-top:16px}
 .btn{font:inherit;border:0;border-radius:12px;padding:13px 14px;font-weight:700;cursor:pointer;background:var(--primary);color:#fff;text-align:center;text-decoration:none;display:block}
 .btn.alt{background:var(--soft);color:var(--text);border:1px solid var(--border)}
 .btn:active{transform:scale(.98)}
@@ -71,20 +71,14 @@ footer a.on{color:var(--fon)} footer a:active{background:var(--fln)}
       <div class="big" id="bUsd">$0.00</div>
       <div class="ngn" id="bNgn">₦0.00</div>
       <div class="btns">
-        <a class="btn" href="deposit.html">⬇️ Deposit</a>
-        <a class="btn alt" href="withdraw.html">⬆️ Withdraw</a>
+        <a class="btn" href="withdraw.html">⬆️ Withdraw</a>
       </div>
     </section>
 
     <section class="card">
-      <div class="head"><h2>🧾 History</h2></div>
-      <div class="tabs">
-        <button class="on" data-f="all">All</button>
-        <button data-f="deposit">Deposits</button>
-        <button data-f="withdraw">Withdrawals</button>
-      </div>
+      <div class="head"><h2>🧾 Withdrawal history</h2></div>
       <div class="list" id="hist"></div>
-      <p class="note" id="histEmpty">No deposits or withdrawals yet.</p>
+      <p class="note" id="histEmpty">No withdrawals yet.</p>
     </section>
   </div>
 </div>
@@ -118,22 +112,16 @@ const ngn = v => "₦" + v.toLocaleString("en-NG", { minimumFractionDigits:2, ma
 const fmtDate = ms => ms ? new Date(ms).toLocaleString(undefined, { month:"short", day:"numeric", hour:"2-digit", minute:"2-digit" }) : "—";
 
 const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
-let all = [], filter = "all";
+let all = [];
 function drawHistory(){
-  const list = all.filter(r => filter === "all" || r.type === filter);
+  const list = all;
   $("histEmpty").classList.toggle("hidden", list.length > 0);
   $("hist").innerHTML = list.map(r => {
-    const dep = r.type === "deposit";
-    const sub = dep ? (r.reference ? "Ref: " + esc(r.reference) : "") : (r.bank ? esc(r.bank) + " · " + esc(r.accountNumber) : "");
-    return `<div class="item"><div><b>${dep ? "Deposit" : "Withdrawal"}</b><small>${fmtDate(r.createdAt?.toMillis?.())}</small>${sub ? "<small>" + sub + "</small>" : ""}</div>
-      <div class="amt ${dep ? "in" : "out"}">${dep ? "+" : "−"}${usd(r.amountUsd || 0)}<span class="st ${esc(r.status)}">${esc(r.status)}</span></div></div>`;
+    const sub = r.bank ? esc(r.bank) + " · " + esc(r.accountNumber) : "";
+    return `<div class="item"><div><b>Withdrawal</b><small>${fmtDate(r.createdAt?.toMillis?.())}</small>${sub ? "<small>" + sub + "</small>" : ""}</div>
+      <div class="amt out">−${usd(r.amountUsd || 0)}<span class="st ${esc(r.status)}">${esc(r.status)}</span></div></div>`;
   }).join("");
 }
-document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => {
-  filter = b.dataset.f;
-  document.querySelectorAll(".tabs button").forEach(x => x.classList.toggle("on", x === b));
-  drawHistory();
-});
 
 onAuthStateChanged(auth, async user => {
   if (!user) { location.replace(LOGIN_PAGE); return; }
@@ -147,7 +135,7 @@ onAuthStateChanged(auth, async user => {
     });
     // history (sorted here so no special Firestore index is needed)
     const snap = await getDocs(query(collection(db, "walletRequests"), where("uid", "==", user.uid)));
-    all = snap.docs.map(d => d.data()).sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+    all = snap.docs.map(d => d.data()).filter(r => r.type === "withdraw").sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
     drawHistory();
   } catch (e) {
     console.error(e);
